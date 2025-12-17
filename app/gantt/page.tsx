@@ -10,6 +10,8 @@ import { EyeIcon, LinkIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import {
   GanttCreateMarkerTrigger,
+  type GanttDependency,
+  GanttDependencyLayer,
   GanttFeatureItem,
   GanttFeatureList,
   GanttFeatureListGroup,
@@ -104,6 +106,49 @@ const exampleMarkers = Array.from({ length: 6 })
       "bg-teal-100 text-teal-900",
     ]),
   }));
+
+// Example dependencies between features demonstrating all 4 types
+const exampleDependencies: GanttDependency[] = [
+  // Finish-to-Start: Feature 0 must finish before Feature 1 can start
+  {
+    id: "dep-fs-1",
+    sourceId: exampleFeatures[0].id,
+    targetId: exampleFeatures[1].id,
+    type: "FS",
+  },
+  // Finish-to-Start: Feature 2 must finish before Feature 3 can start
+  {
+    id: "dep-fs-2",
+    sourceId: exampleFeatures[2].id,
+    targetId: exampleFeatures[3].id,
+    type: "FS",
+    color: "#3b82f6", // Blue
+  },
+  // Start-to-Start: Feature 4 and Feature 5 start together
+  {
+    id: "dep-ss-1",
+    sourceId: exampleFeatures[4].id,
+    targetId: exampleFeatures[5].id,
+    type: "SS",
+    color: "#22c55e", // Green
+  },
+  // Finish-to-Finish: Feature 6 and Feature 7 finish together
+  {
+    id: "dep-ff-1",
+    sourceId: exampleFeatures[6].id,
+    targetId: exampleFeatures[7].id,
+    type: "FF",
+    color: "#a855f7", // Purple
+  },
+  // Start-to-Finish: Feature 8 start triggers Feature 9 finish
+  {
+    id: "dep-sf-1",
+    sourceId: exampleFeatures[8].id,
+    targetId: exampleFeatures[9].id,
+    type: "SF",
+    color: "#f97316", // Orange
+  },
+];
 
 const Example = () => {
   const [features, setFeatures] = useState(exampleFeatures);
@@ -244,6 +289,7 @@ const Example = () => {
             onRemove={handleRemoveMarker}
           />
         ))}
+        <GanttDependencyLayer dependencies={exampleDependencies} />
         <GanttToday />
         <GanttCreateMarkerTrigger onCreateMarker={handleCreateMarker} />
       </GanttTimeline>

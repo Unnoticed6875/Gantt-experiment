@@ -58,9 +58,11 @@ import { cn } from "@/lib/utils";
 
 const draggingAtom = atom(false);
 const scrollXAtom = atom(0);
+const featurePositionsAtom = atom<Map<string, FeaturePosition>>(new Map());
 
 export const useGanttDragging = () => useAtom(draggingAtom);
 export const useGanttScrollX = () => useAtom(scrollXAtom);
+export const useFeaturePositions = () => useAtom(featurePositionsAtom);
 
 export type GanttStatus = {
   id: string;
@@ -81,6 +83,24 @@ export type GanttMarkerProps = {
   id: string;
   date: Date;
   label: string;
+};
+
+export type GanttDependencyType = "FS" | "SS" | "FF" | "SF";
+
+export type GanttDependency = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: GanttDependencyType;
+  color?: string;
+};
+
+type FeaturePosition = {
+  id: string;
+  left: number;
+  width: number;
+  top: number;
+  height: number;
 };
 
 export type Range = "daily" | "monthly" | "quarterly";
@@ -289,6 +309,153 @@ const calculateInnerOffset = (
   const dayOfMonth = date.getDate();
 
   return (dayOfMonth / totalRangeDays) * columnWidth;
+};
+
+// Dependency arrow calculation functions
+type ArrowEndpoint = {
+  x: number;
+  y: number;
+};
+
+type DependencyEndpoints = {
+  source: ArrowEndpoint;
+  target: ArrowEndpoint;
+  targetFromRight: boolean; // true if arrow connects to right side of target bar
+};
+
+const calculateDependencyEndpoints = (
+  dependency: GanttDependency,
+  featurePositions: Map<string, FeaturePosition>
+): DependencyEndpoints | null => {
+  const sourcePos = featurePositions.get(dependency.sourceId);
+  const targetPos = featurePositions.get(dependency.targetId);
+
+  if (!(sourcePos && targetPos)) {
+    return null;
+  }
+
+  // Calculate vertical center of each feature
+  const sourceVerticalCenter = sourcePos.top + sourcePos.height / 2;
+  const targetVerticalCenter = targetPos.top + targetPos.height / 2;
+
+  let sourceX: number;
+  let targetX: number;
+  let targetFromRight = false;
+
+  switch (dependency.type) {
+    case "FS": // Finish-to-Start: arrow enters target from left
+      sourceX = sourcePos.left + sourcePos.width;
+      targetX = targetPos.left;
+      break;
+    case "SS": // Start-to-Start: arrow enters target from left
+      sourceX = sourcePos.left;
+      targetX = targetPos.left;
+      break;
+    case "FF": // Finish-to-Finish: arrow enters target from right
+      sourceX = sourcePos.left + sourcePos.width;
+      targetX = targetPos.left + targetPos.width;
+      targetFromRight = true;
+      break;
+    case "SF": // Start-to-Finish: arrow enters target from right
+      sourceX = sourcePos.left;
+      targetX = targetPos.left + targetPos.width;
+      targetFromRight = true;
+      break;
+    default: // Default to FS
+      sourceX = sourcePos.left + sourcePos.width;
+      targetX = targetPos.left;
+  }
+
+  return {
+    source: { x: sourceX, y: sourceVerticalCenter },
+    target: { x: targetX, y: targetVerticalCenter },
+    targetFromRight,
+  };
+};
+
+// Calculate path between dependency endpoints
+type PathParams = {
+  source: ArrowEndpoint;
+  target: ArrowEndpoint;
+  targetFromRight: boolean;
+};
+
+const calculateDependencyPath = ({
+  source,
+  target,
+  targetFromRight,
+}: PathParams): string => {
+  const padding = 12;
+  const dy = target.y - source.y;
+
+  // Same row - simple horizontal line
+  if (Math.abs(dy) < 5) {
+    return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+  }
+
+  if (targetFromRight) {
+    // Arrow connects to right side of target bar
+    const dx = target.x - source.x;
+
+    // Source is to the left of target - go right, then up/down, then left to target
+    if (dx > 0) {
+      const turnX = target.x + padding;
+      return (
+        `M ${source.x} ${source.y} ` +
+        `L ${turnX} ${source.y} ` +
+        `L ${turnX} ${target.y} ` +
+        `L ${target.x} ${target.y}`
+      );
+    }
+
+    // Source is to the right or close - simple elbow going left
+    const exitX = source.x + padding;
+    const entryX = target.x + padding;
+    const midY =
+      dy > 0
+        ? Math.max(source.y, target.y) + 20
+        : Math.min(source.y, target.y) - 20;
+
+    return (
+      `M ${source.x} ${source.y} ` +
+      `L ${exitX} ${source.y} ` +
+      `L ${exitX} ${midY} ` +
+      `L ${entryX} ${midY} ` +
+      `L ${entryX} ${target.y} ` +
+      `L ${target.x} ${target.y}`
+    );
+  }
+
+  // Arrow connects to left side of target bar (default)
+  const dx = target.x - source.x;
+
+  // Target is to the right - standard elbow (right, down/up, right)
+  if (dx > padding * 2) {
+    const turnX = source.x + padding;
+    return (
+      `M ${source.x} ${source.y} ` +
+      `L ${turnX} ${source.y} ` +
+      `L ${turnX} ${target.y} ` +
+      `L ${target.x} ${target.y}`
+    );
+  }
+
+  // Target is to the left or very close - need to go around
+  const exitX = source.x + padding;
+  const entryX = target.x - padding;
+  const midY =
+    dy > 0
+      ? Math.max(source.y, target.y) + 20
+      : Math.min(source.y, target.y) - 20;
+
+  return (
+    `M ${source.x} ${source.y} ` +
+    `L ${exitX} ${source.y} ` +
+    `L ${exitX} ${midY} ` +
+    `L ${entryX} ${midY} ` +
+    `L ${entryX} ${target.y} ` +
+    `L ${target.x} ${target.y}`
+  );
 };
 
 const GanttContext = createContext<GanttContextProps>({
@@ -856,6 +1023,8 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
 }) => {
   const [scrollX] = useGanttScrollX();
   const gantt = useContext(GanttContext);
+  const [, setFeaturePositions] = useFeaturePositions();
+  const itemRef = useRef<HTMLDivElement>(null);
   const timelineStartDate = useMemo(
     () => new Date(gantt.timelineData.at(0)?.year ?? 0, 0, 1),
     [gantt.timelineData]
@@ -929,13 +1098,59 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
     setEndAt(newEndAt);
   }, [gantt, mousePosition.x, scrollX]);
 
+  // Register feature position for dependency arrows
+  useEffect(() => {
+    const updatePosition = () => {
+      if (!(itemRef.current && gantt.ref?.current)) {
+        return;
+      }
+
+      const itemRect = itemRef.current.getBoundingClientRect();
+      const containerRect = gantt.ref.current.getBoundingClientRect();
+
+      // Calculate position relative to the timeline container
+      const relativeTop = itemRect.top - containerRect.top - gantt.headerHeight;
+
+      setFeaturePositions((prev) => {
+        const next = new Map(prev);
+        next.set(feature.id, {
+          id: feature.id,
+          left: Math.round(offset),
+          width: Math.round(width),
+          top: relativeTop,
+          height: gantt.rowHeight,
+        });
+        return next;
+      });
+    };
+
+    updatePosition();
+
+    return () => {
+      setFeaturePositions((prev) => {
+        const next = new Map(prev);
+        next.delete(feature.id);
+        return next;
+      });
+    };
+  }, [
+    feature.id,
+    offset,
+    width,
+    gantt.ref,
+    gantt.headerHeight,
+    gantt.rowHeight,
+    setFeaturePositions,
+  ]);
+
   return (
     <div
       className={cn("relative flex w-max min-w-full py-0.5", className)}
+      ref={itemRef}
       style={{ height: "var(--gantt-row-height)" }}
     >
       <div
-        className="pointer-events-auto absolute top-0.5"
+        className="pointer-events-auto absolute top-0.5 z-20"
         style={{
           height: "calc(var(--gantt-row-height) - 4px)",
           width: Math.round(width),
@@ -1477,5 +1692,125 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
       </div>
       <div className={cn("h-full w-px bg-card", className)} />
     </div>
+  );
+};
+
+// Dependency Arrow Components
+type GanttDependencyArrowProps = {
+  path: string;
+  color: string;
+  strokeWidth: number;
+  markerId: string;
+};
+
+const GanttDependencyArrow: FC<GanttDependencyArrowProps> = memo(
+  ({ path, color, strokeWidth, markerId }) => (
+    <path
+      className="transition-all duration-150"
+      d={path}
+      fill="none"
+      markerEnd={`url(#${markerId})`}
+      stroke={color}
+      strokeWidth={strokeWidth}
+    />
+  )
+);
+
+GanttDependencyArrow.displayName = "GanttDependencyArrow";
+
+export type GanttDependencyLayerProps = {
+  dependencies: GanttDependency[];
+  className?: string;
+  defaultColor?: string;
+  strokeWidth?: number;
+  arrowSize?: number;
+};
+
+export const GanttDependencyLayer: FC<GanttDependencyLayerProps> = ({
+  dependencies,
+  className,
+  defaultColor = "#94a3b8",
+  strokeWidth = 2,
+  arrowSize = 6,
+}) => {
+  const [featurePositions] = useFeaturePositions();
+  const markerId = useId();
+
+  // Calculate arrow paths for all dependencies
+  const calculatedDependencies = useMemo(() => {
+    return dependencies
+      .map((dep) => {
+        const endpoints = calculateDependencyEndpoints(dep, featurePositions);
+        if (!endpoints) {
+          return null;
+        }
+
+        // Calculate path
+        const path = calculateDependencyPath({
+          source: endpoints.source,
+          target: endpoints.target,
+          targetFromRight: endpoints.targetFromRight,
+        });
+
+        return {
+          id: dep.id,
+          path,
+          color: dep.color ?? defaultColor,
+        };
+      })
+      .filter(
+        (
+          d
+        ): d is {
+          id: string;
+          path: string;
+          color: string;
+        } => d !== null
+      );
+  }, [dependencies, featurePositions, defaultColor]);
+
+  if (calculatedDependencies.length === 0) {
+    return null;
+  }
+
+  return (
+    <svg
+      aria-label="Dependency arrows"
+      className={cn(
+        "pointer-events-none absolute top-0 left-0 z-5 h-full w-full overflow-visible",
+        className
+      )}
+      role="img"
+      style={{ marginTop: "var(--gantt-header-height)" }}
+    >
+      <title>Dependency arrows between features</title>
+      <defs>
+        {/* Arrow marker - orient="auto" automatically rotates to match path direction */}
+        <marker
+          id={markerId}
+          markerHeight={arrowSize}
+          markerUnits="strokeWidth"
+          markerWidth={arrowSize}
+          orient="auto"
+          refX={arrowSize - 1}
+          refY={arrowSize / 2}
+        >
+          <path
+            d={`M0,0 L0,${arrowSize} L${arrowSize},${arrowSize / 2} z`}
+            fill={defaultColor}
+          />
+        </marker>
+      </defs>
+
+      {calculatedDependencies.map((dep) => (
+        <GanttDependencyArrow
+          color={dep.color}
+          key={dep.id}
+          markerId={markerId}
+          path={dep.path}
+          strokeWidth={strokeWidth}
+        />
+      ))}
+    </svg>
   );
 };
