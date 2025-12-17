@@ -579,7 +579,7 @@ export const GanttSidebar: FC<GanttSidebarProps> = ({
     data-roadmap-ui="gantt-sidebar"
   >
     <GanttSidebarHeader />
-    <div className="space-y-4">{children}</div>
+    <div>{children}</div>
   </div>
 );
 
@@ -1088,7 +1088,7 @@ export const GanttFeatureList: FC<GanttFeatureListProps> = ({
   children,
 }) => (
   <div
-    className={cn("absolute top-0 left-0 h-full w-max space-y-4", className)}
+    className={cn("absolute top-0 left-0 h-full w-max", className)}
     style={{ marginTop: "var(--gantt-header-height)" }}
   >
     {children}

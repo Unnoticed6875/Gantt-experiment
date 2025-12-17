@@ -2,6 +2,10 @@
 
 import { faker } from "@faker-js/faker";
 import groupBy from "lodash.groupby";
+
+// Seed faker to ensure consistent data between server and client renders
+faker.seed(12_345);
+
 import { EyeIcon, LinkIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import {
@@ -168,7 +172,11 @@ const Example = () => {
             ([group, groupFeatures]) => (
               <GanttFeatureListGroup key={group}>
                 {groupFeatures.map((feature) => (
-                  <div className="flex" key={feature.id}>
+                  <div
+                    className="flex"
+                    key={feature.id}
+                    style={{ height: "var(--gantt-row-height)" }}
+                  >
                     <ContextMenu>
                       <ContextMenuTrigger>
                         <button
