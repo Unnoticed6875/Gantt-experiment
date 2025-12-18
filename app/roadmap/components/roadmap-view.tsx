@@ -1,6 +1,12 @@
 "use client";
 
-import { IconCalendarRepeat, IconMinus, IconPlus } from "@tabler/icons-react";
+import {
+  IconCalendarRepeat,
+  IconDeviceFloppy,
+  IconMinus,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import groupBy from "lodash.groupby";
 import {
   CalendarIcon,
@@ -13,7 +19,9 @@ import {
   TableIcon,
   TrashIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { SaveChangesDialog } from "@/app/gantt/save-changes-dialog";
+import type { PendingChange } from "@/app/gantt/types";
 import {
   CalendarBody,
   CalendarDate,
@@ -77,11 +85,15 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type {
-  Dependency,
-  FeatureWithRelations,
-  Marker,
-  Status,
+import {
+  type Dependency,
+  deserializeFeature,
+  deserializeMarker,
+  type FeatureWithRelations,
+  type Marker,
+  type SerializedFeatureWithRelations,
+  type SerializedMarker,
+  type Status,
 } from "@/lib/db/types";
 import {
   batchUpdateFeatureDates,
@@ -90,10 +102,10 @@ import {
 } from "../actions";
 
 type RoadmapViewProps = {
-  initialFeatures: FeatureWithRelations[];
+  initialFeatures: SerializedFeatureWithRelations[];
   statuses: Status[];
   dependencies: Dependency[];
-  markers: Marker[];
+  markers: SerializedMarker[];
 };
 
 // Convert DB dependency to Gantt dependency type
@@ -118,6 +130,31 @@ const GanttView = ({
 }) => {
   const [features, setFeatures] = useState(initialFeatures);
   const [zoom, setZoom] = useState(100);
+
+  // Pending changes state
+  const [pendingChanges, setPendingChanges] = useState<
+    Map<string, PendingChange>
+  >(new Map());
+  const originalFeaturesRef = useRef<
+    Map<string, { startAt: Date; endAt: Date }>
+  >(new Map());
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
+  const [selectedChanges, setSelectedChanges] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Initialize original features on mount
+  useEffect(() => {
+    const originalMap = new Map<string, { startAt: Date; endAt: Date }>();
+    for (const feature of initialFeatures) {
+      originalMap.set(feature.id, {
+        startAt: feature.startAt,
+        endAt: feature.endAt,
+      });
+    }
+    originalFeaturesRef.current = originalMap;
+  }, [initialFeatures]);
+
   const groupedFeatures = groupBy(features, "group.name");
 
   const sortedGroupedFeatures = Object.fromEntries(
@@ -145,11 +182,38 @@ const GanttView = ({
   const handleCreateMarker = (date: Date) =>
     console.log(`Create marker: ${date.toISOString()}`);
 
-  const handleMoveFeature = async (
-    id: string,
-    startAt: Date,
-    endAt: Date | null
+  // Track pending change for a feature
+  const trackPendingChange = (
+    featureId: string,
+    newStartAt: Date,
+    newEndAt: Date,
+    source: "drag" | "recalculate"
   ) => {
+    const feature = features.find((f) => f.id === featureId);
+    const original = originalFeaturesRef.current.get(featureId);
+    if (!(feature && original)) {
+      return;
+    }
+
+    setPendingChanges((prev) => {
+      const next = new Map(prev);
+      next.set(featureId, {
+        id: crypto.randomUUID(),
+        featureId,
+        featureName: feature.name,
+        groupName: feature.group.name,
+        originalStartAt: original.startAt,
+        originalEndAt: original.endAt,
+        newStartAt,
+        newEndAt,
+        source,
+        timestamp: new Date(),
+      });
+      return next;
+    });
+  };
+
+  const handleMoveFeature = (id: string, startAt: Date, endAt: Date | null) => {
     if (!endAt) {
       return;
     }
@@ -162,7 +226,7 @@ const GanttView = ({
       dependencies
     );
 
-    // Apply all updates locally
+    // Apply all updates locally for immediate visual feedback
     setFeatures((prev) =>
       prev.map((feature) => {
         const update = updates.find((u) => u.id === feature.id);
@@ -172,10 +236,12 @@ const GanttView = ({
       })
     );
 
-    // Persist to database
-    await batchUpdateFeatureDates(updates);
+    // Track pending changes (don't save to DB yet)
+    for (const update of updates) {
+      trackPendingChange(update.id, update.startAt, update.endAt, "drag");
+    }
 
-    console.log(`Auto-scheduled ${updates.length} feature(s)`);
+    console.log(`Tracked ${updates.length} pending change(s)`);
   };
 
   const handleAddFeature = (date: Date) =>
@@ -184,7 +250,7 @@ const GanttView = ({
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 25));
 
-  const handleRecalculateSchedule = async () => {
+  const handleRecalculateSchedule = () => {
     const updates = recalculateSchedule(features, dependencies);
 
     if (updates.length === 0) {
@@ -192,6 +258,7 @@ const GanttView = ({
       return;
     }
 
+    // Apply all updates locally for immediate visual feedback
     setFeatures((prev) =>
       prev.map((feature) => {
         const update = updates.find((u) => u.id === feature.id);
@@ -201,11 +268,115 @@ const GanttView = ({
       })
     );
 
-    // Persist to database
-    await batchUpdateFeatureDates(updates);
+    // Track pending changes (don't save to DB yet)
+    for (const update of updates) {
+      trackPendingChange(
+        update.id,
+        update.startAt,
+        update.endAt,
+        "recalculate"
+      );
+    }
 
-    console.log(`Recalculated ${updates.length} feature(s)`);
+    console.log(`Tracked ${updates.length} pending recalculation(s)`);
   };
+
+  // Open verification dialog with all changes selected by default
+  const handleOpenVerificationDialog = () => {
+    setSelectedChanges(new Set(pendingChanges.keys()));
+    setIsVerificationOpen(true);
+  };
+
+  // Save selected changes to database
+  const handleSaveSelected = async () => {
+    const changesToSave = Array.from(selectedChanges)
+      .map((featureId) => pendingChanges.get(featureId))
+      .filter((change): change is PendingChange => change !== undefined)
+      .map((change) => ({
+        id: change.featureId,
+        startAt: change.newStartAt,
+        endAt: change.newEndAt,
+      }));
+
+    // Revert unselected changes in local state
+    const unselectedFeatureIds = Array.from(pendingChanges.keys()).filter(
+      (id) => !selectedChanges.has(id)
+    );
+
+    setFeatures((prev) =>
+      prev.map((feature) => {
+        if (unselectedFeatureIds.includes(feature.id)) {
+          const original = originalFeaturesRef.current.get(feature.id);
+          if (original) {
+            return {
+              ...feature,
+              startAt: original.startAt,
+              endAt: original.endAt,
+            };
+          }
+        }
+        return feature;
+      })
+    );
+
+    // Save selected changes to database
+    if (changesToSave.length > 0) {
+      await batchUpdateFeatureDates(changesToSave);
+    }
+
+    // Update original features ref with saved changes
+    for (const change of changesToSave) {
+      originalFeaturesRef.current.set(change.id, {
+        startAt: change.startAt,
+        endAt: change.endAt,
+      });
+    }
+
+    // Clear pending changes and close dialog
+    setPendingChanges(new Map());
+    setSelectedChanges(new Set());
+    setIsVerificationOpen(false);
+
+    console.log(`Saved ${changesToSave.length} change(s)`);
+  };
+
+  // Discard all pending changes
+  const handleDiscardChanges = () => {
+    // Revert all features to original values
+    setFeatures((prev) =>
+      prev.map((feature) => {
+        if (pendingChanges.has(feature.id)) {
+          const original = originalFeaturesRef.current.get(feature.id);
+          if (original) {
+            return {
+              ...feature,
+              startAt: original.startAt,
+              endAt: original.endAt,
+            };
+          }
+        }
+        return feature;
+      })
+    );
+    setPendingChanges(new Map());
+  };
+
+  // Selection handlers for dialog
+  const handleSelectionChange = (featureId: string, selected: boolean) => {
+    setSelectedChanges((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(featureId);
+      } else {
+        next.delete(featureId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () =>
+    setSelectedChanges(new Set(pendingChanges.keys()));
+  const handleDeselectAll = () => setSelectedChanges(new Set());
 
   return (
     <div className="flex h-full flex-col">
@@ -236,6 +407,26 @@ const GanttView = ({
           <IconCalendarRepeat size={16} />
           Recalculate
         </button>
+        {pendingChanges.size > 0 && (
+          <>
+            <button
+              className="flex items-center gap-1.5 rounded border px-2 py-1 text-destructive text-sm hover:bg-destructive/10"
+              onClick={handleDiscardChanges}
+              type="button"
+            >
+              <IconTrash size={16} />
+              Discard
+            </button>
+            <button
+              className="flex items-center gap-1.5 rounded bg-primary px-2 py-1 text-primary-foreground text-sm hover:bg-primary/90"
+              onClick={handleOpenVerificationDialog}
+              type="button"
+            >
+              <IconDeviceFloppy size={16} />
+              Save Changes ({pendingChanges.size})
+            </button>
+          </>
+        )}
       </div>
       <GanttProvider
         className="flex-1 rounded-none"
@@ -271,7 +462,11 @@ const GanttView = ({
               ([group, groupFeatures]) => (
                 <GanttFeatureListGroup key={group}>
                   {groupFeatures.map((feature) => (
-                    <div className="flex" key={feature.id}>
+                    <div
+                      className="flex"
+                      key={feature.id}
+                      style={{ height: "var(--gantt-row-height)" }}
+                    >
                       <ContextMenu>
                         <ContextMenuTrigger
                           onClick={() => handleViewFeature(feature.id)}
@@ -342,6 +537,16 @@ const GanttView = ({
           <GanttCreateMarkerTrigger onCreateMarker={handleCreateMarker} />
         </GanttTimeline>
       </GanttProvider>
+      <SaveChangesDialog
+        onCancel={() => setIsVerificationOpen(false)}
+        onDeselectAll={handleDeselectAll}
+        onSave={handleSaveSelected}
+        onSelectAll={handleSelectAll}
+        onSelectionChange={handleSelectionChange}
+        open={isVerificationOpen}
+        pendingChanges={pendingChanges}
+        selectedChanges={selectedChanges}
+      />
     </div>
   );
 };
@@ -350,13 +555,13 @@ const CalendarView = ({ features }: { features: FeatureWithRelations[] }) => {
   const earliestYear =
     features
       .map((feature) => feature.startAt.getFullYear())
-      .sort()
+      .sort((a, b) => a - b)
       .at(0) ?? new Date().getFullYear();
 
   const latestYear =
     features
       .map((feature) => feature.endAt.getFullYear())
-      .sort()
+      .sort((a, b) => a - b)
       .at(-1) ?? new Date().getFullYear();
 
   return (
@@ -401,7 +606,7 @@ const ListView = ({
     setFeatures(
       features.map((feature) => {
         if (feature.id === active.id) {
-          return { ...feature, status };
+          return { ...feature, status, column: status.id };
         }
 
         return feature;
@@ -492,7 +697,7 @@ const KanbanView = ({
     setFeatures(
       features.map((feature) => {
         if (feature.id === active.id) {
-          return { ...feature, status };
+          return { ...feature, status, column: status.id };
         }
 
         return feature;
@@ -507,6 +712,7 @@ const KanbanView = ({
       className="p-4"
       columns={statuses}
       data={features}
+      onDataChange={setFeatures}
       onDragEnd={handleDragEnd}
     >
       {(column) => (
@@ -529,11 +735,11 @@ const KanbanView = ({
                       {feature.initiative.name}
                     </p>
                   </div>
-                  {feature.owner !== undefined ? (
+                  {feature.owner ? (
                     <Avatar className="h-4 w-4 shrink-0">
-                      <AvatarImage src={feature.owner?.image ?? ""} />
+                      <AvatarImage src={feature.owner.image ?? ""} />
                       <AvatarFallback>
-                        {feature.owner?.name?.slice(0, 2)}
+                        {feature.owner.name?.slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                   ) : null}
@@ -639,11 +845,15 @@ const TableView = ({ features }: { features: FeatureWithRelations[] }) => {
 };
 
 export function RoadmapView({
-  initialFeatures,
+  initialFeatures: serializedFeatures,
   statuses,
   dependencies,
-  markers,
+  markers: serializedMarkers,
 }: RoadmapViewProps) {
+  // Deserialize dates from server component
+  const features = serializedFeatures.map(deserializeFeature);
+  const markers = serializedMarkers.map(deserializeMarker);
+
   // Convert dependencies to Gantt format
   const ganttDependencies = dependencies.map(toGanttDependency);
 
@@ -655,7 +865,7 @@ export function RoadmapView({
       component: () => (
         <GanttView
           dependencies={ganttDependencies}
-          features={initialFeatures}
+          features={features}
           markers={markers}
         />
       ),
@@ -664,29 +874,25 @@ export function RoadmapView({
       id: "calendar",
       label: "Calendar",
       icon: CalendarIcon,
-      component: () => <CalendarView features={initialFeatures} />,
+      component: () => <CalendarView features={features} />,
     },
     {
       id: "list",
       label: "List",
       icon: ListIcon,
-      component: () => (
-        <ListView features={initialFeatures} statuses={statuses} />
-      ),
+      component: () => <ListView features={features} statuses={statuses} />,
     },
     {
       id: "kanban",
       label: "Kanban",
       icon: KanbanSquareIcon,
-      component: () => (
-        <KanbanView features={initialFeatures} statuses={statuses} />
-      ),
+      component: () => <KanbanView features={features} statuses={statuses} />,
     },
     {
       id: "table",
       label: "Table",
       icon: TableIcon,
-      component: () => <TableView features={initialFeatures} />,
+      component: () => <TableView features={features} />,
     },
   ];
 

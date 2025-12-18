@@ -42,3 +42,61 @@ export type FeatureWithRelations = Feature & {
   initiative: Initiative;
   release: Release;
 };
+
+// Serialized types for passing data from server to client components
+// Date objects are serialized to ISO strings during RSC serialization
+export type SerializedFeature = Omit<
+  Feature,
+  "startAt" | "endAt" | "createdAt" | "updatedAt"
+> & {
+  startAt: string;
+  endAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SerializedMarker = Omit<
+  Marker,
+  "date" | "createdAt" | "updatedAt"
+> & {
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SerializedFeatureWithRelations = Omit<
+  FeatureWithRelations,
+  "startAt" | "endAt" | "createdAt" | "updatedAt"
+> & {
+  startAt: string;
+  endAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Helper functions to deserialize dates in client components
+export function deserializeFeature<T extends SerializedFeature>(
+  feature: T
+): Omit<T, "startAt" | "endAt" | "createdAt" | "updatedAt"> & {
+  startAt: Date;
+  endAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+} {
+  return {
+    ...feature,
+    startAt: new Date(feature.startAt),
+    endAt: new Date(feature.endAt),
+    createdAt: new Date(feature.createdAt),
+    updatedAt: new Date(feature.updatedAt),
+  };
+}
+
+export function deserializeMarker(marker: SerializedMarker): Marker {
+  return {
+    ...marker,
+    date: new Date(marker.date),
+    createdAt: new Date(marker.createdAt),
+    updatedAt: new Date(marker.updatedAt),
+  };
+}

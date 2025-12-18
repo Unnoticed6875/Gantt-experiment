@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DragEndEvent } from "@/components/kibo-ui/kanban";
 import {
   KanbanBoard,
   KanbanCard,
@@ -9,10 +10,15 @@ import {
   KanbanProvider,
 } from "@/components/kibo-ui/kanban";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { FeatureWithRelations, Status } from "@/lib/db/types";
+import {
+  deserializeFeature,
+  type SerializedFeatureWithRelations,
+  type Status,
+} from "@/lib/db/types";
+import { updateFeatureStatus } from "../roadmap/actions";
 
 type KanbanViewProps = {
-  initialFeatures: FeatureWithRelations[];
+  initialFeatures: SerializedFeatureWithRelations[];
   statuses: Status[];
 };
 
@@ -28,18 +34,45 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function KanbanView({ initialFeatures, statuses }: KanbanViewProps) {
-  const [features, setFeatures] = useState(
+  const [features, setFeatures] = useState(() =>
     initialFeatures.map((feature) => ({
-      ...feature,
+      ...deserializeFeature(feature),
       column: feature.status.id,
     }))
   );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over) {
+      return;
+    }
+
+    const status = statuses.find(({ id }) => id === over.id);
+
+    if (!status) {
+      return;
+    }
+
+    setFeatures(
+      features.map((feature) => {
+        if (feature.id === active.id) {
+          return { ...feature, status, column: status.id };
+        }
+
+        return feature;
+      })
+    );
+
+    await updateFeatureStatus(active.id as string, status.id);
+  };
 
   return (
     <KanbanProvider
       columns={statuses}
       data={features}
       onDataChange={setFeatures}
+      onDragEnd={handleDragEnd}
     >
       {(column) => (
         <KanbanBoard id={column.id} key={column.id}>

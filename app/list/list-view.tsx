@@ -10,16 +10,22 @@ import {
   ListProvider,
 } from "@/components/kibo-ui/list";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { FeatureWithRelations, Status } from "@/lib/db/types";
+import {
+  deserializeFeature,
+  type SerializedFeatureWithRelations,
+  type Status,
+} from "@/lib/db/types";
 import { updateFeatureStatus } from "../roadmap/actions";
 
 type ListViewProps = {
-  initialFeatures: FeatureWithRelations[];
+  initialFeatures: SerializedFeatureWithRelations[];
   statuses: Status[];
 };
 
 export function ListView({ initialFeatures, statuses }: ListViewProps) {
-  const [features, setFeatures] = useState(initialFeatures);
+  const [features, setFeatures] = useState(() =>
+    initialFeatures.map(deserializeFeature)
+  );
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -37,7 +43,7 @@ export function ListView({ initialFeatures, statuses }: ListViewProps) {
     setFeatures(
       features.map((feature) => {
         if (feature.id === active.id) {
-          return { ...feature, status: targetStatus };
+          return { ...feature, status: targetStatus, column: targetStatus.id };
         }
 
         return feature;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   CalendarBody,
   CalendarDate,
@@ -11,23 +12,33 @@ import {
   CalendarProvider,
   CalendarYearPicker,
 } from "@/components/kibo-ui/calendar";
-import type { FeatureWithRelations } from "@/lib/db/types";
+import {
+  deserializeFeature,
+  type SerializedFeatureWithRelations,
+} from "@/lib/db/types";
 
 type CalendarViewProps = {
-  features: FeatureWithRelations[];
+  features: SerializedFeatureWithRelations[];
 };
 
-export function CalendarView({ features }: CalendarViewProps) {
+export function CalendarView({
+  features: serializedFeatures,
+}: CalendarViewProps) {
+  const features = useMemo(
+    () => serializedFeatures.map(deserializeFeature),
+    [serializedFeatures]
+  );
+
   const earliestYear =
     features
       .map((feature) => feature.startAt.getFullYear())
-      .sort()
+      .sort((a, b) => a - b)
       .at(0) ?? new Date().getFullYear();
 
   const latestYear =
     features
       .map((feature) => feature.endAt.getFullYear())
-      .sort()
+      .sort((a, b) => a - b)
       .at(-1) ?? new Date().getFullYear();
 
   return (

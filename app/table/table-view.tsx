@@ -1,6 +1,7 @@
 "use client";
 
 import { IconChevronRight } from "@tabler/icons-react";
+import { useMemo } from "react";
 import type { ColumnDef } from "@/components/kibo-ui/table";
 import {
   TableBody,
@@ -13,13 +14,22 @@ import {
   TableRow,
 } from "@/components/kibo-ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { FeatureWithRelations } from "@/lib/db/types";
+import {
+  deserializeFeature,
+  type FeatureWithRelations,
+  type SerializedFeatureWithRelations,
+} from "@/lib/db/types";
 
 type TableViewProps = {
-  features: FeatureWithRelations[];
+  features: SerializedFeatureWithRelations[];
 };
 
-export function TableView({ features }: TableViewProps) {
+export function TableView({ features: serializedFeatures }: TableViewProps) {
+  const features = useMemo(
+    () => serializedFeatures.map(deserializeFeature),
+    [serializedFeatures]
+  );
+
   const columns: ColumnDef<FeatureWithRelations>[] = [
     {
       accessorKey: "name",
