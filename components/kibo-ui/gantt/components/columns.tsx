@@ -1,7 +1,7 @@
 "use client";
 
+import { IconPlus } from "@tabler/icons-react";
 import { useMouse, useThrottle, useWindowScroll } from "@uidotdev/usehooks";
-import { PlusIcon } from "lucide-react";
 import type { FC } from "react";
 import { useId, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export const GanttAddFeatureHelper: FC<GanttAddFeatureHelperProps> = ({
         onClick={handleClick}
         type="button"
       >
-        <PlusIcon
+        <IconPlus
           className="pointer-events-none select-none text-muted-foreground"
           size={16}
         />

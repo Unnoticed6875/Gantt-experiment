@@ -1,13 +1,13 @@
 "use client";
 
+import {
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconSelector,
+} from "@tabler/icons-react";
 import { getDay, getDaysInMonth, isSameDay } from "date-fns";
 import { atom, useAtom } from "jotai";
-import {
-  Check,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsUpDown,
-} from "lucide-react";
 import {
   createContext,
   memo,
@@ -137,7 +137,7 @@ const Combobox = ({
         {value
           ? data.find((item) => item.value === value)?.label
           : labels.button}
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-40 p-0">
         <Command
@@ -165,7 +165,7 @@ const Combobox = ({
                   }}
                   value={item.value}
                 >
-                  <Check
+                  <IconCheck
                     className={cn(
                       "mr-2 h-4 w-4",
                       value === item.value ? "opacity-100" : "opacity-0"
@@ -424,10 +424,10 @@ export const CalendarDatePagination = ({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Button onClick={handlePreviousMonth} size="icon" variant="ghost">
-        <ChevronLeftIcon size={16} />
+        <IconChevronLeft size={16} />
       </Button>
       <Button onClick={handleNextMonth} size="icon" variant="ghost">
-        <ChevronRightIcon size={16} />
+        <IconChevronRight size={16} />
       </Button>
     </div>
   );

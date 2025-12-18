@@ -1,3 +1,4 @@
+import { IconArrowDown, IconArrowUp, IconSelector } from "@tabler/icons-react";
 import type {
   Cell,
   Column,
@@ -15,7 +16,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { atom, useAtom } from "jotai";
-import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { createContext, memo, useCallback, useContext } from "react";
 import { Button } from "@/components/ui/button";
@@ -176,21 +176,21 @@ export function TableColumnHeader<TData, TValue>({
           {(() => {
             const sorted = column.getIsSorted();
             if (sorted === "desc") {
-              return <ArrowDownIcon className="ml-2 h-4 w-4" />;
+              return <IconArrowDown className="ml-2 h-4 w-4" />;
             }
             if (sorted === "asc") {
-              return <ArrowUpIcon className="ml-2 h-4 w-4" />;
+              return <IconArrowUp className="ml-2 h-4 w-4" />;
             }
-            return <ChevronsUpDownIcon className="ml-2 h-4 w-4" />;
+            return <IconSelector className="ml-2 h-4 w-4" />;
           })()}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={handleSortAsc}>
-            <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+            <IconArrowUp className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Asc
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSortDesc}>
-            <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+            <IconArrowDown className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
             Desc
           </DropdownMenuItem>
         </DropdownMenuContent>

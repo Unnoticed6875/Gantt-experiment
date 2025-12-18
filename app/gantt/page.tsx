@@ -7,13 +7,13 @@ import groupBy from "lodash.groupby";
 faker.seed(12_345);
 
 import {
-  CalendarSyncIcon,
-  EyeIcon,
-  LinkIcon,
-  MinusIcon,
-  PlusIcon,
-  TrashIcon,
-} from "lucide-react";
+  IconCalendarRepeat,
+  IconEye,
+  IconLink,
+  IconMinus,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import {
   autoSchedule,
@@ -272,7 +272,7 @@ const Example = () => {
             onClick={handleZoomOut}
             type="button"
           >
-            <MinusIcon size={16} />
+            <IconMinus size={16} />
           </button>
           <span className="min-w-12 text-center text-sm">{zoom}%</span>
           <button
@@ -280,7 +280,7 @@ const Example = () => {
             onClick={handleZoomIn}
             type="button"
           >
-            <PlusIcon size={16} />
+            <IconPlus size={16} />
           </button>
         </div>
         <button
@@ -288,7 +288,7 @@ const Example = () => {
           onClick={handleRecalculateSchedule}
           type="button"
         >
-          <CalendarSyncIcon size={16} />
+          <IconCalendarRepeat size={16} />
           Recalculate
         </button>
       </div>
@@ -360,7 +360,7 @@ const Example = () => {
                             className="flex items-center gap-2"
                             onClick={() => handleViewFeature(feature.id)}
                           >
-                            <EyeIcon
+                            <IconEye
                               className="text-muted-foreground"
                               size={16}
                             />
@@ -370,7 +370,7 @@ const Example = () => {
                             className="flex items-center gap-2"
                             onClick={() => handleCopyLink(feature.id)}
                           >
-                            <LinkIcon
+                            <IconLink
                               className="text-muted-foreground"
                               size={16}
                             />
@@ -380,7 +380,7 @@ const Example = () => {
                             className="flex items-center gap-2 text-destructive"
                             onClick={() => handleRemoveFeature(feature.id)}
                           >
-                            <TrashIcon size={16} />
+                            <IconTrash size={16} />
                             Remove from roadmap
                           </ContextMenuItem>
                         </ContextMenuContent>

@@ -1,8 +1,8 @@
 "use client";
 
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMouse, useThrottle, useWindowScroll } from "@uidotdev/usehooks";
 import { formatDate } from "date-fns";
-import { PlusIcon, TrashIcon } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
 import {
@@ -60,7 +60,7 @@ export const GanttCreateMarkerTrigger: FC<GanttCreateMarkerTriggerProps> = ({
           onClick={handleClick}
           type="button"
         >
-          <PlusIcon className="text-muted-foreground" size={12} />
+          <IconPlus className="text-muted-foreground" size={12} />
         </button>
         <div className="whitespace-nowrap rounded-full border border-border/50 bg-background/90 px-2 py-1 text-foreground text-xs backdrop-blur-lg">
           {formatDate(date, "MMM dd, yyyy")}
@@ -132,7 +132,7 @@ export const GanttMarker: FC<
               className="flex items-center gap-2 text-destructive"
               onClick={handleRemove}
             >
-              <TrashIcon size={16} />
+              <IconTrash size={16} />
               Remove marker
             </ContextMenuItem>
           ) : null}

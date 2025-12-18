@@ -1,7 +1,7 @@
 "use client";
 
 import { faker } from "@faker-js/faker";
-import { ChevronRightIcon } from "lucide-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import type { ColumnDef } from "@/components/kibo-ui/table";
 import {
   TableBody,
@@ -101,7 +101,7 @@ const Example = () => {
             <span className="font-medium">{row.original.name}</span>
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
               <span>{row.original.product.name}</span>
-              <ChevronRightIcon size={12} />
+              <IconChevronRight size={12} />
               <span>{row.original.group.name}</span>
             </div>
           </div>
