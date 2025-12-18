@@ -74,6 +74,29 @@ export type SerializedFeatureWithRelations = Omit<
   updatedAt: string;
 };
 
+// Serialize functions to prepare data for RSC serialization
+// Use these in server components before passing data to client components
+export function serializeFeature(
+  feature: FeatureWithRelations
+): SerializedFeatureWithRelations {
+  return {
+    ...feature,
+    startAt: feature.startAt.toISOString(),
+    endAt: feature.endAt.toISOString(),
+    createdAt: feature.createdAt.toISOString(),
+    updatedAt: feature.updatedAt.toISOString(),
+  };
+}
+
+export function serializeMarker(marker: Marker): SerializedMarker {
+  return {
+    ...marker,
+    date: marker.date.toISOString(),
+    createdAt: marker.createdAt.toISOString(),
+    updatedAt: marker.updatedAt.toISOString(),
+  };
+}
+
 // Helper functions to deserialize dates in client components
 export function deserializeFeature<T extends SerializedFeature>(
   feature: T

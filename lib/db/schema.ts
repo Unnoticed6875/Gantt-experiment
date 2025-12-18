@@ -1,4 +1,11 @@
-import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  index,
+  pgEnum,
+  pgTable,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 // Enum for dependency types (matching Gantt component types)
 export const dependencyTypeEnum = pgEnum("dependency_type", [
@@ -59,52 +66,76 @@ export const releases = pgTable("releases", {
 });
 
 // Features table
-export const features = pgTable("features", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  startAt: timestamp("start_at").notNull(),
-  endAt: timestamp("end_at").notNull(),
-  statusId: uuid("status_id")
-    .notNull()
-    .references(() => statuses.id),
-  ownerId: uuid("owner_id").references(() => users.id),
-  groupId: uuid("group_id")
-    .notNull()
-    .references(() => groups.id),
-  productId: uuid("product_id")
-    .notNull()
-    .references(() => products.id),
-  initiativeId: uuid("initiative_id")
-    .notNull()
-    .references(() => initiatives.id),
-  releaseId: uuid("release_id")
-    .notNull()
-    .references(() => releases.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const features = pgTable(
+  "features",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    startAt: timestamp("start_at").notNull(),
+    endAt: timestamp("end_at").notNull(),
+    statusId: uuid("status_id")
+      .notNull()
+      .references(() => statuses.id),
+    ownerId: uuid("owner_id").references(() => users.id),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id),
+    initiativeId: uuid("initiative_id")
+      .notNull()
+      .references(() => initiatives.id),
+    releaseId: uuid("release_id")
+      .notNull()
+      .references(() => releases.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("features_status_id_idx").on(table.statusId),
+    index("features_group_id_idx").on(table.groupId),
+    index("features_owner_id_idx").on(table.ownerId),
+    index("features_product_id_idx").on(table.productId),
+    index("features_initiative_id_idx").on(table.initiativeId),
+    index("features_release_id_idx").on(table.releaseId),
+    index("features_start_at_idx").on(table.startAt),
+    index("features_end_at_idx").on(table.endAt),
+  ]
+);
 
 // Markers table
-export const markers = pgTable("markers", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  date: timestamp("date").notNull(),
-  label: varchar("label", { length: 255 }).notNull(),
-  className: varchar("class_name", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const markers = pgTable(
+  "markers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    date: timestamp("date").notNull(),
+    label: varchar("label", { length: 255 }).notNull(),
+    className: varchar("class_name", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("markers_date_idx").on(table.date)]
+);
 
 // Dependencies table
-export const dependencies = pgTable("dependencies", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  sourceId: uuid("source_id")
-    .notNull()
-    .references(() => features.id, { onDelete: "cascade" }),
-  targetId: uuid("target_id")
-    .notNull()
-    .references(() => features.id, { onDelete: "cascade" }),
-  type: dependencyTypeEnum("type").notNull(),
-  color: varchar("color", { length: 7 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const dependencies = pgTable(
+  "dependencies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => features.id, { onDelete: "cascade" }),
+    targetId: uuid("target_id")
+      .notNull()
+      .references(() => features.id, { onDelete: "cascade" }),
+    type: dependencyTypeEnum("type").notNull(),
+    color: varchar("color", { length: 7 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("dependencies_source_id_idx").on(table.sourceId),
+    index("dependencies_target_id_idx").on(table.targetId),
+  ]
+);

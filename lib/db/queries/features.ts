@@ -1,6 +1,14 @@
 import { db } from "../index";
 import { dependencies, markers, statuses } from "../schema";
-import type { FeatureWithRelations } from "../types";
+import {
+  type Dependency,
+  type FeatureWithRelations,
+  type SerializedFeatureWithRelations,
+  type SerializedMarker,
+  type Status,
+  serializeFeature,
+  serializeMarker,
+} from "../types";
 
 export async function getAllFeaturesWithRelations(): Promise<
   FeatureWithRelations[]
@@ -46,5 +54,29 @@ export async function getRoadmapData() {
     statuses: statusesData,
     dependencies: dependenciesData,
     markers: markersData,
+  };
+}
+
+// Get roadmap data with proper serialization for RSC boundary
+// Use this instead of getRoadmapData to avoid 'as unknown as' type casts
+export async function getSerializedRoadmapData(): Promise<{
+  features: SerializedFeatureWithRelations[];
+  statuses: Status[];
+  dependencies: Dependency[];
+  markers: SerializedMarker[];
+}> {
+  const [featuresData, statusesData, dependenciesData, markersData] =
+    await Promise.all([
+      getAllFeaturesWithRelations(),
+      getAllStatuses(),
+      getAllDependencies(),
+      getAllMarkers(),
+    ]);
+
+  return {
+    features: featuresData.map(serializeFeature),
+    statuses: statusesData,
+    dependencies: dependenciesData,
+    markers: markersData.map(serializeMarker),
   };
 }
