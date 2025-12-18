@@ -62,9 +62,11 @@ export {
 export { GanttTimeline, type GanttTimelineProps } from "./components/timeline";
 // Re-export store hooks
 export {
+  type SidebarColumns,
   useFeaturePositions,
   useGanttDragging,
   useGanttScrollX,
+  useSidebarColumns,
 } from "./store";
 // Re-export types
 export type {
@@ -159,8 +161,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     const updateSidebarWidth = () => {
       const sidebarElement = scrollRef.current?.querySelector(
         '[data-roadmap-ui="gantt-sidebar"]'
-      );
-      const newWidth = sidebarElement ? 300 : 0;
+      ) as HTMLElement | null;
+      const newWidth = sidebarElement ? sidebarElement.offsetWidth : 0;
       setSidebarWidth(newWidth);
     };
 
@@ -171,6 +173,8 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       observer.observe(scrollRef.current, {
         childList: true,
         subtree: true,
+        attributes: true,
+        attributeFilter: ["style"],
       });
     }
 

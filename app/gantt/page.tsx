@@ -202,6 +202,7 @@ const Example = () => {
           <GanttSidebarGroup key={group} name={group}>
             {groupFeatures.map((feature) => (
               <GanttSidebarItem
+                dependencies={exampleDependencies}
                 feature={feature}
                 key={feature.id}
                 onSelectItem={handleViewFeature}
