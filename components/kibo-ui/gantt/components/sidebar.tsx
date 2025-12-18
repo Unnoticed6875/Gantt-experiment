@@ -212,79 +212,83 @@ export const GanttSidebarHeader: FC = () => {
     setColumns((prev) => ({ ...prev, [column]: !prev[column] }));
   };
 
-  const headerContent = (
-    <div
-      className="sticky top-0 z-10 grid shrink-0 items-end border-border/50 border-b bg-backdrop/90 font-medium text-muted-foreground text-xs backdrop-blur-sm"
-      style={{
-        height: "var(--gantt-header-height)",
-        gridTemplateColumns: getGridTemplateColumns(columns),
-      }}
-    >
-      <div className="flex items-end px-2.5 pb-2">Name</div>
-      {columns.status ? (
-        <div className="flex items-end px-2 pb-2">Status</div>
-      ) : null}
-      {columns.start ? (
-        <div className="flex items-end px-2 pb-2">Start</div>
-      ) : null}
-      {columns.end ? <div className="flex items-end px-2 pb-2">End</div> : null}
-      {columns.successors ? (
-        <div className="flex items-end px-2 pb-2">Succ</div>
-      ) : null}
-      {columns.predecessors ? (
-        <div className="flex items-end px-2 pb-2">Pred</div>
-      ) : null}
-      {columns.deps ? (
-        <div className="flex items-end px-2 pb-2">Deps</div>
-      ) : null}
-    </div>
-  );
-
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>{headerContent}</ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuCheckboxItem checked disabled>
-          Name
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.status}
-          onCheckedChange={() => toggleColumn("status")}
-        >
-          Status
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.start}
-          onCheckedChange={() => toggleColumn("start")}
-        >
-          Start Date
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.end}
-          onCheckedChange={() => toggleColumn("end")}
-        >
-          End Date
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.successors}
-          onCheckedChange={() => toggleColumn("successors")}
-        >
-          Successors
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.predecessors}
-          onCheckedChange={() => toggleColumn("predecessors")}
-        >
-          Predecessors
-        </ContextMenuCheckboxItem>
-        <ContextMenuCheckboxItem
-          checked={columns.deps}
-          onCheckedChange={() => toggleColumn("deps")}
-        >
-          Dependency Types
-        </ContextMenuCheckboxItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    <div
+      className="sticky top-0 left-0 z-30"
+      style={{ height: "var(--gantt-header-height)" }}
+    >
+      <ContextMenu>
+        <ContextMenuTrigger className="block h-full">
+          <div
+            className="grid h-full w-full shrink-0 cursor-context-menu items-end border-border/50 border-b bg-background font-medium text-muted-foreground text-xs"
+            style={{
+              gridTemplateColumns: getGridTemplateColumns(columns),
+            }}
+          >
+            <div className="flex items-end px-2.5 pb-2">Name</div>
+            {columns.status ? (
+              <div className="flex items-end px-2 pb-2">Status</div>
+            ) : null}
+            {columns.start ? (
+              <div className="flex items-end px-2 pb-2">Start</div>
+            ) : null}
+            {columns.end ? (
+              <div className="flex items-end px-2 pb-2">End</div>
+            ) : null}
+            {columns.successors ? (
+              <div className="flex items-end px-2 pb-2">Succ</div>
+            ) : null}
+            {columns.predecessors ? (
+              <div className="flex items-end px-2 pb-2">Pred</div>
+            ) : null}
+            {columns.deps ? (
+              <div className="flex items-end px-2 pb-2">Deps</div>
+            ) : null}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuCheckboxItem checked disabled>
+            Name
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.status}
+            onCheckedChange={() => toggleColumn("status")}
+          >
+            Status
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.start}
+            onCheckedChange={() => toggleColumn("start")}
+          >
+            Start Date
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.end}
+            onCheckedChange={() => toggleColumn("end")}
+          >
+            End Date
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.successors}
+            onCheckedChange={() => toggleColumn("successors")}
+          >
+            Successors
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.predecessors}
+            onCheckedChange={() => toggleColumn("predecessors")}
+          >
+            Predecessors
+          </ContextMenuCheckboxItem>
+          <ContextMenuCheckboxItem
+            checked={columns.deps}
+            onCheckedChange={() => toggleColumn("deps")}
+          >
+            Dependency Types
+          </ContextMenuCheckboxItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    </div>
   );
 };
 
@@ -325,14 +329,14 @@ export const GanttSidebar: FC<GanttSidebarProps> = ({
   return (
     <div
       className={cn(
-        "sticky left-0 z-30 h-max min-h-full overflow-clip border-border/50 border-r bg-background/90 backdrop-blur-md",
+        "sticky left-0 z-30 flex flex-col border-border/50 border-r bg-background",
         className
       )}
       data-roadmap-ui="gantt-sidebar"
       style={{ width: `${width}px` }}
     >
       <GanttSidebarHeader />
-      <div>{children}</div>
+      <div className="flex-1">{children}</div>
     </div>
   );
 };

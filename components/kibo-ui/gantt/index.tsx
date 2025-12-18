@@ -325,7 +325,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         ref={scrollRef}
         style={{
           ...cssVariables,
-          gridTemplateColumns: "var(--gantt-sidebar-width) 1fr",
+          gridTemplateColumns: "max-content 1fr",
         }}
       >
         {children}
