@@ -39,7 +39,7 @@ export type FeaturePosition = {
   height: number;
 };
 
-export type Range = "daily" | "monthly" | "quarterly";
+export type Range = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 export type TimelineData = {
   year: number;

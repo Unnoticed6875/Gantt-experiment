@@ -1,73 +1,100 @@
 import {
   addDays,
   addMonths,
+  addWeeks,
+  addYears,
   differenceInDays,
   differenceInHours,
   differenceInMonths,
+  differenceInWeeks,
+  differenceInYears,
   endOfDay,
   endOfMonth,
+  endOfWeek,
+  endOfYear,
   getDaysInMonth,
+  getDaysInYear,
   startOfDay,
   startOfMonth,
+  startOfWeek,
+  startOfYear,
 } from "date-fns";
 import type { Range } from "../types";
 
 export const getsDaysIn = (range: Range) => {
-  let fn = (_date: Date) => 1;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = getDaysInMonth;
+  if (range === "weekly") {
+    return (_date: Date) => 7;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return getDaysInMonth;
+  }
+  if (range === "yearly") {
+    return getDaysInYear;
+  }
+  return (_date: Date) => 1;
 };
 
 export const getDifferenceIn = (range: Range) => {
-  let fn = differenceInDays;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = differenceInMonths;
+  if (range === "weekly") {
+    return differenceInWeeks;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return differenceInMonths;
+  }
+  if (range === "yearly") {
+    return differenceInYears;
+  }
+  return differenceInDays;
 };
 
 export const getInnerDifferenceIn = (range: Range) => {
-  let fn = differenceInHours;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = differenceInDays;
+  if (range === "weekly") {
+    return differenceInDays;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return differenceInDays;
+  }
+  if (range === "yearly") {
+    return differenceInMonths;
+  }
+  return differenceInHours;
 };
 
 export const getStartOf = (range: Range) => {
-  let fn = startOfDay;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = startOfMonth;
+  if (range === "weekly") {
+    return startOfWeek;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return startOfMonth;
+  }
+  if (range === "yearly") {
+    return startOfYear;
+  }
+  return startOfDay;
 };
 
 export const getEndOf = (range: Range) => {
-  let fn = endOfDay;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = endOfMonth;
+  if (range === "weekly") {
+    return endOfWeek;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return endOfMonth;
+  }
+  if (range === "yearly") {
+    return endOfYear;
+  }
+  return endOfDay;
 };
 
 export const getAddRange = (range: Range) => {
-  let fn = addDays;
-
-  if (range === "monthly" || range === "quarterly") {
-    fn = addMonths;
+  if (range === "weekly") {
+    return addWeeks;
   }
-
-  return fn;
+  if (range === "monthly" || range === "quarterly") {
+    return addMonths;
+  }
+  if (range === "yearly") {
+    return addYears;
+  }
+  return addDays;
 };

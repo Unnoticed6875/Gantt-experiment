@@ -131,10 +131,14 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   const rowHeight = 36;
   let columnWidth = 50;
 
-  if (range === "monthly") {
+  if (range === "weekly") {
+    columnWidth = 80;
+  } else if (range === "monthly") {
     columnWidth = 150;
   } else if (range === "quarterly") {
     columnWidth = 100;
+  } else if (range === "yearly") {
+    columnWidth = 200;
   }
 
   const cssVariables = useMemo(

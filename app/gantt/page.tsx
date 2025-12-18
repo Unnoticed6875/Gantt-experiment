@@ -6,7 +6,13 @@ import groupBy from "lodash.groupby";
 // Seed faker to ensure consistent data between server and client renders
 faker.seed(12_345);
 
-import { EyeIcon, LinkIcon, TrashIcon } from "lucide-react";
+import {
+  EyeIcon,
+  LinkIcon,
+  MinusIcon,
+  PlusIcon,
+  TrashIcon,
+} from "lucide-react";
 import { useState } from "react";
 import {
   GanttCreateMarkerTrigger,
@@ -23,6 +29,7 @@ import {
   GanttSidebarItem,
   GanttTimeline,
   GanttToday,
+  type Range,
 } from "@/components/kibo-ui/gantt";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -31,6 +38,14 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+
+const RANGE_OPTIONS: { value: Range; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "daily", label: "Daily" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
+];
 
 const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
@@ -152,6 +167,8 @@ const exampleDependencies: GanttDependency[] = [
 
 const Example = () => {
   const [features, setFeatures] = useState(exampleFeatures);
+  const [range, setRange] = useState<Range>("monthly");
+  const [zoom, setZoom] = useState(100);
   const groupedFeatures = groupBy(features, "group.name");
   const sortedGroupedFeatures = Object.fromEntries(
     Object.entries(groupedFeatures).sort(([nameA], [nameB]) =>
@@ -193,115 +210,157 @@ const Example = () => {
   const handleAddFeature = (date: Date) =>
     console.log(`Add feature: ${date.toISOString()}`);
 
+  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
+  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 25));
+
   return (
-    <GanttProvider
-      className="border"
-      onAddItem={handleAddFeature}
-      range="daily"
-      zoom={75}
-    >
-      <GanttSidebar>
-        {Object.entries(sortedGroupedFeatures).map(([group, groupFeatures]) => (
-          <GanttSidebarGroup key={group} name={group}>
-            {groupFeatures.map((feature) => (
-              <GanttSidebarItem
-                allFeatures={allSortedFeatures}
-                dependencies={exampleDependencies}
-                feature={feature}
-                featureIndex={
-                  allSortedFeatures.findIndex((f) => f.id === feature.id) + 1
-                }
-                key={feature.id}
-                onSelectItem={handleViewFeature}
-              />
+    <div className="flex h-screen flex-col">
+      <div className="flex items-center gap-4 border-b p-2">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">View:</span>
+          <select
+            className="rounded border px-2 py-1 text-sm"
+            onChange={(e) => setRange(e.target.value as Range)}
+            value={range}
+          >
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
-          </GanttSidebarGroup>
-        ))}
-      </GanttSidebar>
-      <GanttTimeline>
-        <GanttHeader />
-        <GanttFeatureList>
+          </select>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground text-sm">Zoom:</span>
+          <button
+            className="rounded border p-1 hover:bg-secondary"
+            onClick={handleZoomOut}
+            type="button"
+          >
+            <MinusIcon size={16} />
+          </button>
+          <span className="min-w-12 text-center text-sm">{zoom}%</span>
+          <button
+            className="rounded border p-1 hover:bg-secondary"
+            onClick={handleZoomIn}
+            type="button"
+          >
+            <PlusIcon size={16} />
+          </button>
+        </div>
+      </div>
+      <GanttProvider
+        className="flex-1 border"
+        onAddItem={handleAddFeature}
+        range={range}
+        zoom={zoom}
+      >
+        <GanttSidebar>
           {Object.entries(sortedGroupedFeatures).map(
             ([group, groupFeatures]) => (
-              <GanttFeatureListGroup key={group}>
+              <GanttSidebarGroup key={group} name={group}>
                 {groupFeatures.map((feature) => (
-                  <div
-                    className="flex"
+                  <GanttSidebarItem
+                    allFeatures={allSortedFeatures}
+                    dependencies={exampleDependencies}
+                    feature={feature}
+                    featureIndex={
+                      allSortedFeatures.findIndex((f) => f.id === feature.id) +
+                      1
+                    }
                     key={feature.id}
-                    style={{ height: "var(--gantt-row-height)" }}
-                  >
-                    <ContextMenu>
-                      <ContextMenuTrigger>
-                        <button
-                          onClick={() => handleViewFeature(feature.id)}
-                          type="button"
-                        >
-                          <GanttFeatureItem
-                            onMove={handleMoveFeature}
-                            {...feature}
-                          >
-                            <p className="flex-1 truncate text-xs">
-                              {feature.name}
-                            </p>
-                            {feature.owner ? (
-                              <Avatar className="h-4 w-4">
-                                <AvatarImage src={feature.owner.image} />
-                                <AvatarFallback>
-                                  {feature.owner.name?.slice(0, 2)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ) : null}
-                          </GanttFeatureItem>
-                        </button>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem
-                          className="flex items-center gap-2"
-                          onClick={() => handleViewFeature(feature.id)}
-                        >
-                          <EyeIcon
-                            className="text-muted-foreground"
-                            size={16}
-                          />
-                          View feature
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="flex items-center gap-2"
-                          onClick={() => handleCopyLink(feature.id)}
-                        >
-                          <LinkIcon
-                            className="text-muted-foreground"
-                            size={16}
-                          />
-                          Copy link
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="flex items-center gap-2 text-destructive"
-                          onClick={() => handleRemoveFeature(feature.id)}
-                        >
-                          <TrashIcon size={16} />
-                          Remove from roadmap
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  </div>
+                    onSelectItem={handleViewFeature}
+                  />
                 ))}
-              </GanttFeatureListGroup>
+              </GanttSidebarGroup>
             )
           )}
-        </GanttFeatureList>
-        {exampleMarkers.map((marker) => (
-          <GanttMarker
-            key={marker.id}
-            {...marker}
-            onRemove={handleRemoveMarker}
-          />
-        ))}
-        <GanttDependencyLayer dependencies={exampleDependencies} />
-        <GanttToday />
-        <GanttCreateMarkerTrigger onCreateMarker={handleCreateMarker} />
-      </GanttTimeline>
-    </GanttProvider>
+        </GanttSidebar>
+        <GanttTimeline>
+          <GanttHeader />
+          <GanttFeatureList>
+            {Object.entries(sortedGroupedFeatures).map(
+              ([group, groupFeatures]) => (
+                <GanttFeatureListGroup key={group}>
+                  {groupFeatures.map((feature) => (
+                    <div
+                      className="flex"
+                      key={feature.id}
+                      style={{ height: "var(--gantt-row-height)" }}
+                    >
+                      <ContextMenu>
+                        <ContextMenuTrigger>
+                          <button
+                            onClick={() => handleViewFeature(feature.id)}
+                            type="button"
+                          >
+                            <GanttFeatureItem
+                              onMove={handleMoveFeature}
+                              {...feature}
+                            >
+                              <p className="flex-1 truncate text-xs">
+                                {feature.name}
+                              </p>
+                              {feature.owner ? (
+                                <Avatar className="h-4 w-4">
+                                  <AvatarImage src={feature.owner.image} />
+                                  <AvatarFallback>
+                                    {feature.owner.name?.slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ) : null}
+                            </GanttFeatureItem>
+                          </button>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            className="flex items-center gap-2"
+                            onClick={() => handleViewFeature(feature.id)}
+                          >
+                            <EyeIcon
+                              className="text-muted-foreground"
+                              size={16}
+                            />
+                            View feature
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            className="flex items-center gap-2"
+                            onClick={() => handleCopyLink(feature.id)}
+                          >
+                            <LinkIcon
+                              className="text-muted-foreground"
+                              size={16}
+                            />
+                            Copy link
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            className="flex items-center gap-2 text-destructive"
+                            onClick={() => handleRemoveFeature(feature.id)}
+                          >
+                            <TrashIcon size={16} />
+                            Remove from roadmap
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    </div>
+                  ))}
+                </GanttFeatureListGroup>
+              )
+            )}
+          </GanttFeatureList>
+          {exampleMarkers.map((marker) => (
+            <GanttMarker
+              key={marker.id}
+              {...marker}
+              onRemove={handleRemoveMarker}
+            />
+          ))}
+          <GanttDependencyLayer dependencies={exampleDependencies} />
+          <GanttToday />
+          <GanttCreateMarkerTrigger onCreateMarker={handleCreateMarker} />
+        </GanttTimeline>
+      </GanttProvider>
+    </div>
   );
 };
 
