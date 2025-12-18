@@ -139,12 +139,79 @@ export const calculateDependencyEndpoints = (
   };
 };
 
+type Point = { x: number; y: number };
+
+const EPSILON = 0.001;
+
+// Build a rounded polyline path from a series of points
+const buildRoundedPath = (points: Point[], radius: number): string => {
+  // Filter out consecutive duplicate points to avoid zero-length segments
+  const filteredPoints = points.filter(
+    (point, index) =>
+      index === 0 ||
+      Math.abs(point.x - points[index - 1].x) > EPSILON ||
+      Math.abs(point.y - points[index - 1].y) > EPSILON
+  );
+
+  if (filteredPoints.length < 2) {
+    return "";
+  }
+  if (filteredPoints.length === 2) {
+    return `M ${filteredPoints[0].x} ${filteredPoints[0].y} L ${filteredPoints[1].x} ${filteredPoints[1].y}`;
+  }
+
+  let path = `M ${filteredPoints[0].x} ${filteredPoints[0].y}`;
+
+  for (let i = 1; i < filteredPoints.length - 1; i++) {
+    const prev = filteredPoints[i - 1];
+    const curr = filteredPoints[i];
+    const next = filteredPoints[i + 1];
+
+    // Direction vectors
+    const dx1 = curr.x - prev.x;
+    const dy1 = curr.y - prev.y;
+    const dx2 = next.x - curr.x;
+    const dy2 = next.y - curr.y;
+
+    // Segment lengths
+    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+    // Skip rounding if segments are too short (avoid division by zero / NaN)
+    if (len1 < EPSILON || len2 < EPSILON) {
+      path += ` L ${curr.x} ${curr.y}`;
+      continue;
+    }
+
+    // Clamp radius to not exceed half of either segment
+    const maxRadius = Math.min(len1 / 2, len2 / 2, radius);
+
+    // Points where the curve starts and ends
+    const startX = curr.x - (dx1 / len1) * maxRadius;
+    const startY = curr.y - (dy1 / len1) * maxRadius;
+    const endX = curr.x + (dx2 / len2) * maxRadius;
+    const endY = curr.y + (dy2 / len2) * maxRadius;
+
+    // Line to curve start, then quadratic bezier through corner to curve end
+    path += ` L ${startX} ${startY} Q ${curr.x} ${curr.y} ${endX} ${endY}`;
+  }
+
+  // Line to the final point
+  const last = filteredPoints.at(-1);
+  if (last) {
+    path += ` L ${last.x} ${last.y}`;
+  }
+
+  return path;
+};
+
 export const calculateDependencyPath = ({
   source,
   target,
   targetFromRight,
 }: PathParams): string => {
   const padding = 12;
+  const radius = 6;
   const dy = target.y - source.y;
   const dx = target.x - source.x;
 
@@ -158,59 +225,65 @@ export const calculateDependencyPath = ({
     if (dx > 0) {
       // Source is to the left of target
       const exitX = Math.max(source.x + padding, target.x + padding);
-      return (
-        `M ${source.x} ${source.y} ` +
-        `L ${exitX} ${source.y} ` +
-        `L ${exitX} ${target.y} ` +
-        `L ${target.x} ${target.y}`
+      return buildRoundedPath(
+        [
+          { x: source.x, y: source.y },
+          { x: exitX, y: source.y },
+          { x: exitX, y: target.y },
+          { x: target.x, y: target.y },
+        ],
+        radius
       );
     }
 
     // Source is to the right of target - need to go around
     const exitX = source.x + padding;
     const entryX = target.x + padding;
-    // Route through midpoint between source and target Y
     const midY = (source.y + target.y) / 2;
 
-    return (
-      `M ${source.x} ${source.y} ` +
-      `L ${exitX} ${source.y} ` +
-      `L ${exitX} ${midY} ` +
-      `L ${entryX} ${midY} ` +
-      `L ${entryX} ${target.y} ` +
-      `L ${target.x} ${target.y}`
+    return buildRoundedPath(
+      [
+        { x: source.x, y: source.y },
+        { x: exitX, y: source.y },
+        { x: exitX, y: midY },
+        { x: entryX, y: midY },
+        { x: entryX, y: target.y },
+        { x: target.x, y: target.y },
+      ],
+      radius
     );
   }
 
   // FS or SS dependencies - arrow enters from left side of target
 
   // Standard case: target is to the right with enough space
-  // Use a simple 3-segment path: right, down/up, right
   if (dx > padding * 2) {
-    // Calculate midpoint X between source and target for the vertical line
     const turnX = source.x + Math.min(padding, dx / 2);
-    return (
-      `M ${source.x} ${source.y} ` +
-      `L ${turnX} ${source.y} ` +
-      `L ${turnX} ${target.y} ` +
-      `L ${target.x} ${target.y}`
+    return buildRoundedPath(
+      [
+        { x: source.x, y: source.y },
+        { x: turnX, y: source.y },
+        { x: turnX, y: target.y },
+        { x: target.x, y: target.y },
+      ],
+      radius
     );
   }
 
   // Target is close to or left of source - need to route around
-  // Go right from source, then route to target's left side
   const exitX = source.x + padding;
   const entryX = target.x - padding;
-
-  // Route through midpoint Y to create a clean S-curve
   const midY = (source.y + target.y) / 2;
 
-  return (
-    `M ${source.x} ${source.y} ` +
-    `L ${exitX} ${source.y} ` +
-    `L ${exitX} ${midY} ` +
-    `L ${entryX} ${midY} ` +
-    `L ${entryX} ${target.y} ` +
-    `L ${target.x} ${target.y}`
+  return buildRoundedPath(
+    [
+      { x: source.x, y: source.y },
+      { x: exitX, y: source.y },
+      { x: exitX, y: midY },
+      { x: entryX, y: midY },
+      { x: entryX, y: target.y },
+      { x: target.x, y: target.y },
+    ],
+    radius
   );
 };
