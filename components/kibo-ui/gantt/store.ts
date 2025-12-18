@@ -12,6 +12,8 @@ export type SidebarColumns = {
   status: boolean;
   start: boolean;
   end: boolean;
+  successors: boolean;
+  predecessors: boolean;
   deps: boolean;
 };
 
@@ -20,6 +22,8 @@ export const sidebarColumnsAtom = atom<SidebarColumns>({
   status: true,
   start: true,
   end: true,
+  successors: true,
+  predecessors: true,
   deps: true,
 });
 
@@ -28,7 +32,9 @@ export const COLUMN_WIDTHS = {
   status: 80,
   start: 60,
   end: 60,
-  deps: 40,
+  successors: 80,
+  predecessors: 80,
+  deps: 80,
 } as const;
 
 export const useGanttDragging = () => useAtom(draggingAtom);

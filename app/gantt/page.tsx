@@ -159,6 +159,9 @@ const Example = () => {
     )
   );
 
+  // Flatten sorted features for index lookup
+  const allSortedFeatures = Object.values(sortedGroupedFeatures).flat();
+
   const handleViewFeature = (id: string) =>
     console.log(`Feature selected: ${id}`);
 
@@ -194,16 +197,20 @@ const Example = () => {
     <GanttProvider
       className="border"
       onAddItem={handleAddFeature}
-      range="monthly"
-      zoom={100}
+      range="daily"
+      zoom={75}
     >
       <GanttSidebar>
         {Object.entries(sortedGroupedFeatures).map(([group, groupFeatures]) => (
           <GanttSidebarGroup key={group} name={group}>
             {groupFeatures.map((feature) => (
               <GanttSidebarItem
+                allFeatures={allSortedFeatures}
                 dependencies={exampleDependencies}
                 feature={feature}
+                featureIndex={
+                  allSortedFeatures.findIndex((f) => f.id === feature.id) + 1
+                }
                 key={feature.id}
                 onSelectItem={handleViewFeature}
               />

@@ -33,6 +33,12 @@ const getGridTemplateColumns = (columns: SidebarColumns): string => {
   if (columns.end) {
     parts.push(`${COLUMN_WIDTHS.end}px`);
   }
+  if (columns.successors) {
+    parts.push(`${COLUMN_WIDTHS.successors}px`);
+  }
+  if (columns.predecessors) {
+    parts.push(`${COLUMN_WIDTHS.predecessors}px`);
+  }
   if (columns.deps) {
     parts.push(`${COLUMN_WIDTHS.deps}px`);
   }
@@ -50,14 +56,27 @@ export const getSidebarWidth = (columns: SidebarColumns): number => {
   if (columns.end) {
     width += COLUMN_WIDTHS.end;
   }
+  if (columns.successors) {
+    width += COLUMN_WIDTHS.successors;
+  }
+  if (columns.predecessors) {
+    width += COLUMN_WIDTHS.predecessors;
+  }
   if (columns.deps) {
     width += COLUMN_WIDTHS.deps;
   }
   return width;
 };
 
+const getShortId = (uuid: string, allFeatures: GanttFeature[]): string => {
+  const index = allFeatures.findIndex((f) => f.id === uuid);
+  return index >= 0 ? `T${index + 1}` : "-";
+};
+
 export type GanttSidebarItemProps = {
   feature: GanttFeature;
+  featureIndex?: number;
+  allFeatures?: GanttFeature[];
   onSelectItem?: (id: string) => void;
   className?: string;
   dependencies?: GanttDependency[];
@@ -65,6 +84,8 @@ export type GanttSidebarItemProps = {
 
 export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({
   feature,
+  featureIndex,
+  allFeatures = [],
   onSelectItem,
   className,
   dependencies = [],
@@ -72,9 +93,26 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({
   const gantt = useGantt();
   const [columns] = useSidebarColumns();
 
-  const depCount = dependencies.filter(
-    (dep) => dep.sourceId === feature.id || dep.targetId === feature.id
-  ).length;
+  const successorIds = dependencies
+    .filter((dep) => dep.sourceId === feature.id)
+    .map((dep) => getShortId(dep.targetId, allFeatures));
+
+  const predecessorIds = dependencies
+    .filter((dep) => dep.targetId === feature.id)
+    .map((dep) => getShortId(dep.sourceId, allFeatures));
+
+  // Get unique dependency types for this feature
+  const depTypes = [
+    ...new Set(
+      dependencies
+        .filter(
+          (dep) => dep.sourceId === feature.id || dep.targetId === feature.id
+        )
+        .map((dep) => dep.type)
+    ),
+  ];
+
+  const shortId = featureIndex !== undefined ? `T${featureIndex}` : "";
 
   const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
     if (event.target === event.currentTarget) {
@@ -107,6 +145,11 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({
     >
       {/* Name column - always visible */}
       <div className="pointer-events-none flex items-center gap-2 truncate px-2.5">
+        {shortId ? (
+          <span className="shrink-0 font-mono text-muted-foreground">
+            {shortId}
+          </span>
+        ) : null}
         <div
           className="h-2 w-2 shrink-0 rounded-full"
           style={{ backgroundColor: feature.status.color }}
@@ -135,10 +178,24 @@ export const GanttSidebarItem: FC<GanttSidebarItemProps> = ({
         </div>
       ) : null}
 
-      {/* Dependencies column */}
+      {/* Successors column */}
+      {columns.successors ? (
+        <div className="pointer-events-none truncate px-2 text-muted-foreground">
+          {successorIds.length > 0 ? successorIds.join(", ") : "-"}
+        </div>
+      ) : null}
+
+      {/* Predecessors column */}
+      {columns.predecessors ? (
+        <div className="pointer-events-none truncate px-2 text-muted-foreground">
+          {predecessorIds.length > 0 ? predecessorIds.join(", ") : "-"}
+        </div>
+      ) : null}
+
+      {/* Dependency types column */}
       {columns.deps ? (
-        <div className="pointer-events-none truncate px-2 text-center text-muted-foreground">
-          {depCount > 0 ? depCount : "-"}
+        <div className="pointer-events-none truncate px-2 text-muted-foreground">
+          {depTypes.length > 0 ? depTypes.join(", ") : "-"}
         </div>
       ) : null}
     </button>
@@ -171,8 +228,14 @@ export const GanttSidebarHeader: FC = () => {
         <div className="flex items-end px-2 pb-2">Start</div>
       ) : null}
       {columns.end ? <div className="flex items-end px-2 pb-2">End</div> : null}
+      {columns.successors ? (
+        <div className="flex items-end px-2 pb-2">Succ</div>
+      ) : null}
+      {columns.predecessors ? (
+        <div className="flex items-end px-2 pb-2">Pred</div>
+      ) : null}
       {columns.deps ? (
-        <div className="flex items-end justify-center px-2 pb-2">Deps</div>
+        <div className="flex items-end px-2 pb-2">Deps</div>
       ) : null}
     </div>
   );
@@ -203,10 +266,22 @@ export const GanttSidebarHeader: FC = () => {
           End Date
         </ContextMenuCheckboxItem>
         <ContextMenuCheckboxItem
+          checked={columns.successors}
+          onCheckedChange={() => toggleColumn("successors")}
+        >
+          Successors
+        </ContextMenuCheckboxItem>
+        <ContextMenuCheckboxItem
+          checked={columns.predecessors}
+          onCheckedChange={() => toggleColumn("predecessors")}
+        >
+          Predecessors
+        </ContextMenuCheckboxItem>
+        <ContextMenuCheckboxItem
           checked={columns.deps}
           onCheckedChange={() => toggleColumn("deps")}
         >
-          Dependencies
+          Dependency Types
         </ContextMenuCheckboxItem>
       </ContextMenuContent>
     </ContextMenu>
