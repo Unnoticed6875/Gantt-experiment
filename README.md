@@ -6,6 +6,8 @@ The original Kibo UI components have been hugely enhanced with additional featur
 
 Special thanks to [Hayden Bleasel](https://github.com/haydenbleasel) for creating the excellent Kibo UI component library.
 
+![Roadmap Screenshot](public/screenshot.png)
+
 ## Features
 
 - **Gantt Chart** - Timeline view with dependencies, drag-to-reschedule, and auto-scheduling
