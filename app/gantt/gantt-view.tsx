@@ -98,8 +98,12 @@ export function GanttView({
     new Set()
   );
 
-  // Initialize original features on mount
+  // Initialize original features on mount only
   useEffect(() => {
+    // Skip if already initialized to preserve original values across re-renders
+    if (originalFeaturesRef.current.size > 0) {
+      return;
+    }
     const originalMap = new Map<string, { startAt: Date; endAt: Date }>();
     for (const feature of initialFeatures) {
       originalMap.set(feature.id, {

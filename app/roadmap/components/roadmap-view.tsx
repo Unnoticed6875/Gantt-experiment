@@ -143,8 +143,12 @@ const GanttView = ({
     new Set()
   );
 
-  // Initialize original features on mount
+  // Initialize original features on mount only
   useEffect(() => {
+    // Skip if already initialized to preserve original values across re-renders
+    if (originalFeaturesRef.current.size > 0) {
+      return;
+    }
     const originalMap = new Map<string, { startAt: Date; endAt: Date }>();
     for (const feature of initialFeatures) {
       originalMap.set(feature.id, {
@@ -565,7 +569,7 @@ const CalendarView = ({ features }: { features: FeatureWithRelations[] }) => {
       .at(-1) ?? new Date().getFullYear();
 
   return (
-    <CalendarProvider>
+    <CalendarProvider className="h-full">
       <CalendarDate>
         <CalendarDatePicker>
           <CalendarMonthPicker />
@@ -897,7 +901,10 @@ export function RoadmapView({
   ];
 
   return (
-    <Tabs className="not-prose size-full gap-0 divide-y" defaultValue="gantt">
+    <Tabs
+      className="not-prose h-screen w-full gap-0 divide-y"
+      defaultValue="gantt"
+    >
       <div className="flex items-center justify-between gap-4 p-4">
         <p className="font-medium">Roadmap</p>
         <TabsList>
@@ -910,7 +917,11 @@ export function RoadmapView({
         </TabsList>
       </div>
       {views.map((view) => (
-        <TabsContent className="overflow-hidden" key={view.id} value={view.id}>
+        <TabsContent
+          className="min-h-0 overflow-hidden"
+          key={view.id}
+          value={view.id}
+        >
           <view.component />
         </TabsContent>
       ))}

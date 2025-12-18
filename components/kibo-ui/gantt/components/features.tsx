@@ -270,6 +270,7 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
       >
         {onMove ? (
           <DndContext
+            id={`gantt-left-${feature.id}`}
             modifiers={[restrictToHorizontalAxis]}
             onDragEnd={onDragEnd}
             onDragMove={handleLeftDragMove}
@@ -283,6 +284,7 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
           </DndContext>
         ) : null}
         <DndContext
+          id={`gantt-item-${feature.id}`}
           modifiers={[restrictToHorizontalAxis]}
           onDragEnd={onDragEnd}
           onDragMove={handleItemDragMove}
@@ -297,6 +299,7 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
         </DndContext>
         {onMove ? (
           <DndContext
+            id={`gantt-right-${feature.id}`}
             modifiers={[restrictToHorizontalAxis]}
             onDragEnd={onDragEnd}
             onDragMove={handleRightDragMove}
