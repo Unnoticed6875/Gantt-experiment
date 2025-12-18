@@ -104,5 +104,5 @@ export type PathParams = {
   source: ArrowEndpoint;
   target: ArrowEndpoint;
   targetFromRight: boolean;
-  obstacles: Obstacle[];
+  obstacles?: Obstacle[];
 };

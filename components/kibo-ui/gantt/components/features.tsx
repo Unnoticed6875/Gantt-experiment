@@ -139,6 +139,12 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
   const [startAt, setStartAt] = useState<Date>(feature.startAt);
   const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
 
+  // Sync prop changes to local state (for external updates like recalculate)
+  useEffect(() => {
+    setStartAt(feature.startAt);
+    setEndAt(feature.endAt);
+  }, [feature.startAt, feature.endAt]);
+
   const width = useMemo(
     () => getWidth(startAt, endAt, gantt),
     [startAt, endAt, gantt]
@@ -208,7 +214,9 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
 
       const itemRect = itemRef.current.getBoundingClientRect();
       const containerRect = gantt.ref.current.getBoundingClientRect();
-      const relativeTop = itemRect.top - containerRect.top - gantt.headerHeight;
+      const scrollTop = gantt.ref.current.scrollTop;
+      const relativeTop =
+        itemRect.top - containerRect.top + scrollTop - gantt.headerHeight;
 
       setFeaturePositions((prev) => {
         const next = new Map(prev);
@@ -223,9 +231,13 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
       });
     };
 
-    updatePosition();
+    // Use requestAnimationFrame to ensure DOM has been painted before reading positions
+    const rafId = requestAnimationFrame(() => {
+      updatePosition();
+    });
 
     return () => {
+      cancelAnimationFrame(rafId);
       setFeaturePositions((prev) => {
         const next = new Map(prev);
         next.delete(feature.id);

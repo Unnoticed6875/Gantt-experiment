@@ -80,6 +80,8 @@ export type {
   Range,
   TimelineData,
 } from "./types";
+// Re-export utilities
+export { autoSchedule, recalculateSchedule } from "./utils/autoSchedule";
 
 const createInitialTimelineData = (today: Date) => {
   const data: TimelineData = [];

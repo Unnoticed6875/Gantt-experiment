@@ -1,10 +1,10 @@
 "use client";
 
 import type { FC } from "react";
-import { memo, useId, useMemo } from "react";
+import { memo, useEffect, useId, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useFeaturePositions } from "../store";
-import type { GanttDependency } from "../types";
+import type { FeaturePosition, GanttDependency } from "../types";
 import {
   calculateDependencyEndpoints,
   calculateDependencyPath,
@@ -50,22 +50,35 @@ export const GanttDependencyLayer: FC<GanttDependencyLayerProps> = ({
   const [featurePositions] = useFeaturePositions();
   const markerId = useId();
 
+  // Debounce position updates to avoid race conditions when multiple features update
+  // Using 100ms to account for RAF delays in position calculations
+  const [stablePositions, setStablePositions] = useState<
+    Map<string, FeaturePosition>
+  >(() => new Map());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStablePositions(new Map(featurePositions));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [featurePositions]);
+
   const allObstacles = useMemo(() => {
     const margin = 4;
-    return Array.from(featurePositions.values()).map((pos) => ({
+    return Array.from(stablePositions.values()).map((pos) => ({
       id: pos.id,
       left: pos.left - margin,
       top: pos.top - margin,
       right: pos.left + pos.width + margin,
       bottom: pos.top + pos.height + margin,
     }));
-  }, [featurePositions]);
+  }, [stablePositions]);
 
   const calculatedDependencies = useMemo(
     () =>
       dependencies
         .map((dep) => {
-          const endpoints = calculateDependencyEndpoints(dep, featurePositions);
+          const endpoints = calculateDependencyEndpoints(dep, stablePositions);
           if (!endpoints) {
             return null;
           }
@@ -96,7 +109,7 @@ export const GanttDependencyLayer: FC<GanttDependencyLayerProps> = ({
             color: string;
           } => d !== null
         ),
-    [dependencies, featurePositions, defaultColor, allObstacles]
+    [dependencies, stablePositions, defaultColor, allObstacles]
   );
 
   if (calculatedDependencies.length === 0) {

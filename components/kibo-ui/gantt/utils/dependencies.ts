@@ -143,27 +143,21 @@ export const calculateDependencyPath = ({
   source,
   target,
   targetFromRight,
-  obstacles,
 }: PathParams): string => {
   const padding = 12;
   const dy = target.y - source.y;
+  const dx = target.x - source.x;
 
+  // Horizontal line (same row or very close)
   if (Math.abs(dy) < 5) {
     return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
   }
 
   if (targetFromRight) {
-    const dx = target.x - source.x;
-
+    // FF or SF dependencies - arrow enters from right side of target
     if (dx > 0) {
-      const baseExitX = target.x + padding;
-      const exitX = findSafeVerticalX({
-        baseX: baseExitX,
-        direction: "right",
-        minY: Math.min(source.y, target.y),
-        maxY: Math.max(source.y, target.y),
-        obstacles,
-      });
+      // Source is to the left of target
+      const exitX = Math.max(source.x + padding, target.x + padding);
       return (
         `M ${source.x} ${source.y} ` +
         `L ${exitX} ${source.y} ` +
@@ -172,19 +166,11 @@ export const calculateDependencyPath = ({
       );
     }
 
+    // Source is to the right of target - need to go around
     const exitX = source.x + padding;
     const entryX = target.x + padding;
-    const baseY =
-      dy > 0 ? Math.max(source.y, target.y) : Math.min(source.y, target.y);
-    const direction = dy > 0 ? "below" : "above";
-
-    const midY = findSafeHorizontalY({
-      baseY: direction === "below" ? baseY + 20 : baseY - 20,
-      direction,
-      minX: Math.min(exitX, entryX),
-      maxX: Math.max(exitX, entryX),
-      obstacles,
-    });
+    // Route through midpoint between source and target Y
+    const midY = (source.y + target.y) / 2;
 
     return (
       `M ${source.x} ${source.y} ` +
@@ -196,17 +182,13 @@ export const calculateDependencyPath = ({
     );
   }
 
-  const dx = target.x - source.x;
+  // FS or SS dependencies - arrow enters from left side of target
 
+  // Standard case: target is to the right with enough space
+  // Use a simple 3-segment path: right, down/up, right
   if (dx > padding * 2) {
-    const baseTurnX = source.x + padding;
-    const turnX = findSafeVerticalX({
-      baseX: baseTurnX,
-      direction: "right",
-      minY: Math.min(source.y, target.y),
-      maxY: Math.max(source.y, target.y),
-      obstacles,
-    });
+    // Calculate midpoint X between source and target for the vertical line
+    const turnX = source.x + Math.min(padding, dx / 2);
     return (
       `M ${source.x} ${source.y} ` +
       `L ${turnX} ${source.y} ` +
@@ -215,19 +197,13 @@ export const calculateDependencyPath = ({
     );
   }
 
+  // Target is close to or left of source - need to route around
+  // Go right from source, then route to target's left side
   const exitX = source.x + padding;
   const entryX = target.x - padding;
-  const baseY =
-    dy > 0 ? Math.max(source.y, target.y) : Math.min(source.y, target.y);
-  const direction = dy > 0 ? "below" : "above";
 
-  const midY = findSafeHorizontalY({
-    baseY: direction === "below" ? baseY + 20 : baseY - 20,
-    direction,
-    minX: Math.min(exitX, entryX),
-    maxX: Math.max(exitX, entryX),
-    obstacles,
-  });
+  // Route through midpoint Y to create a clean S-curve
+  const midY = (source.y + target.y) / 2;
 
   return (
     `M ${source.x} ${source.y} ` +

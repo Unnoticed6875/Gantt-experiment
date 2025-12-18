@@ -7,6 +7,7 @@ import groupBy from "lodash.groupby";
 faker.seed(12_345);
 
 import {
+  CalendarSyncIcon,
   EyeIcon,
   LinkIcon,
   MinusIcon,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import {
+  autoSchedule,
   GanttCreateMarkerTrigger,
   type GanttDependency,
   GanttDependencyLayer,
@@ -30,6 +32,7 @@ import {
   GanttTimeline,
   GanttToday,
   type Range,
+  recalculateSchedule,
 } from "@/components/kibo-ui/gantt";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -198,13 +201,25 @@ const Example = () => {
       return;
     }
 
-    setFeatures((prev) =>
-      prev.map((feature) =>
-        feature.id === id ? { ...feature, startAt, endAt } : feature
-      )
+    // Calculate all features that need to be rescheduled
+    const updates = autoSchedule(
+      id,
+      { startAt, endAt },
+      features,
+      exampleDependencies
     );
 
-    console.log(`Move feature: ${id} from ${startAt} to ${endAt}`);
+    // Apply all updates
+    setFeatures((prev) =>
+      prev.map((feature) => {
+        const update = updates.find((u) => u.id === feature.id);
+        return update
+          ? { ...feature, startAt: update.startAt, endAt: update.endAt }
+          : feature;
+      })
+    );
+
+    console.log(`Auto-scheduled ${updates.length} feature(s)`);
   };
 
   const handleAddFeature = (date: Date) =>
@@ -212,6 +227,26 @@ const Example = () => {
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 25));
+
+  const handleRecalculateSchedule = () => {
+    const updates = recalculateSchedule(features, exampleDependencies);
+
+    if (updates.length === 0) {
+      console.log("Schedule is already up to date");
+      return;
+    }
+
+    setFeatures((prev) =>
+      prev.map((feature) => {
+        const update = updates.find((u) => u.id === feature.id);
+        return update
+          ? { ...feature, startAt: update.startAt, endAt: update.endAt }
+          : feature;
+      })
+    );
+
+    console.log(`Recalculated ${updates.length} feature(s)`);
+  };
 
   return (
     <div className="flex h-screen flex-col">
@@ -248,6 +283,14 @@ const Example = () => {
             <PlusIcon size={16} />
           </button>
         </div>
+        <button
+          className="flex items-center gap-1.5 rounded border px-2 py-1 text-sm hover:bg-secondary"
+          onClick={handleRecalculateSchedule}
+          type="button"
+        >
+          <CalendarSyncIcon size={16} />
+          Recalculate
+        </button>
       </div>
       <GanttProvider
         className="flex-1 border"
