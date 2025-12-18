@@ -18,13 +18,30 @@ bun x ultracite fix  # Auto-fix lint + format issues (run before commits)
 
 Pre-commit hooks (lefthook) automatically run `ultracite fix` on staged files.
 
+## Database Setup
+
+PostgreSQL via Docker with Drizzle ORM.
+
+```bash
+docker-compose up -d           # Start PostgreSQL container
+bun run db:generate            # Generate migrations from schema
+bun run db:migrate             # Apply migrations
+bun run db:push                # Push schema directly (dev)
+bun run db:seed                # Seed database with sample data
+bun run db:studio              # Open Drizzle Studio
+bun run db:clean               # Reset database (destroys data)
+```
+
+Requires `DATABASE_URL` environment variable (e.g., `postgresql://shadcn:shadcn_password@localhost:5432/roadmap`).
+
 ## Architecture
 
 ### Directory Structure
 
-- `app/` - Next.js App Router pages (gantt, kanban, calendar, list, table demos)
+- `app/` - Next.js App Router pages (gantt, kanban, calendar, list, table, roadmap demos)
 - `components/kibo-ui/` - Complex UI components from kibo-ui.com registry
 - `components/ui/` - Base shadcn/ui primitives (button, dialog, etc.)
+- `lib/db/` - Drizzle ORM schema, relations, queries, and database client
 - `lib/utils.ts` - Shared utilities (cn function for class merging)
 
 ### Kibo UI Components
@@ -54,6 +71,7 @@ Located in `components/kibo-ui/`, these are feature-rich components:
 - **@tanstack/react-table** - Table component
 - **jotai** - Atomic state management (gantt)
 - **date-fns** - Date utilities
+- **drizzle-orm** - Database ORM with type-safe queries
 - **@tabler/icons-react** - Icon library (configured in components.json)
 
 ## Code Standards
