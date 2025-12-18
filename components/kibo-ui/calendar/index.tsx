@@ -296,12 +296,18 @@ export const CalendarBody = ({ features, children }: CalendarBodyProps) => {
     }
   }
 
+  const totalCells = days.length;
+  const rows = Math.ceil(totalCells / 7);
+
   return (
-    <div className="grid grow grid-cols-7">
+    <div
+      className="grid min-h-0 flex-1 grid-cols-7"
+      style={{ gridTemplateRows: `repeat(${rows}, 1fr)` }}
+    >
       {days.map((day, index) => (
         <div
           className={cn(
-            "relative aspect-square overflow-hidden border-t border-r",
+            "relative overflow-hidden border-t border-r",
             index % 7 === 6 && "border-r-0"
           )}
           key={`day-${index}-${year}-${month}`}
@@ -455,7 +461,7 @@ export const CalendarHeader = ({ className }: CalendarHeaderProps) => {
   );
 
   return (
-    <div className={cn("grid grow grid-cols-7", className)}>
+    <div className={cn("grid grid-cols-7", className)}>
       {daysData.map((day) => (
         <div className="p-3 text-right text-muted-foreground text-xs" key={day}>
           {day}
