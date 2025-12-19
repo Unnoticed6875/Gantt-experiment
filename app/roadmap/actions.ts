@@ -3,7 +3,12 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { dependencies, features, markers } from "@/lib/db/schema";
+import {
+  dependencies,
+  features,
+  markers,
+  schedulingRules,
+} from "@/lib/db/schema";
 import type {
   Dependency,
   Feature,
@@ -11,6 +16,8 @@ import type {
   NewDependency,
   NewFeature,
   NewMarker,
+  NewSchedulingRule,
+  SchedulingRule,
 } from "@/lib/db/types";
 
 type ActionResult<T> =
@@ -251,6 +258,98 @@ export async function batchUpdateFeatureDates(
         error instanceof Error
           ? error.message
           : "Failed to batch update feature dates",
+    };
+  }
+}
+
+// Scheduling Rules Actions
+
+export async function getSchedulingRules(): Promise<
+  ActionResult<SchedulingRule[]>
+> {
+  try {
+    const result = await db.select().from(schedulingRules);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Failed to get scheduling rules:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get scheduling rules",
+    };
+  }
+}
+
+export async function createSchedulingRule(
+  data: Omit<NewSchedulingRule, "id" | "createdAt" | "updatedAt">
+): Promise<ActionResult<SchedulingRule>> {
+  try {
+    const result = await db.insert(schedulingRules).values(data).returning();
+    revalidateFeatureRoutes();
+    return { success: true, data: result[0] };
+  } catch (error) {
+    console.error("Failed to create scheduling rule:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create scheduling rule",
+    };
+  }
+}
+
+export async function updateSchedulingRule(
+  id: string,
+  data: Partial<Omit<NewSchedulingRule, "id" | "createdAt" | "updatedAt">>
+): Promise<ActionResult<SchedulingRule>> {
+  try {
+    const result = await db
+      .update(schedulingRules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(schedulingRules.id, id))
+      .returning();
+    if (result.length === 0) {
+      return { success: false, error: "Scheduling rule not found" };
+    }
+    revalidateFeatureRoutes();
+    return { success: true, data: result[0] };
+  } catch (error) {
+    console.error("Failed to update scheduling rule:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update scheduling rule",
+    };
+  }
+}
+
+export async function toggleSchedulingRule(
+  id: string,
+  enabled: boolean
+): Promise<ActionResult<SchedulingRule>> {
+  return await updateSchedulingRule(id, { enabled });
+}
+
+export async function deleteSchedulingRule(
+  id: string
+): Promise<ActionResult<void>> {
+  try {
+    await db.delete(schedulingRules).where(eq(schedulingRules.id, id));
+    revalidateFeatureRoutes();
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Failed to delete scheduling rule:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to delete scheduling rule",
     };
   }
 }

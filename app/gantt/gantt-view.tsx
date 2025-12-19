@@ -5,6 +5,7 @@ import {
   IconDeviceFloppy,
   IconMinus,
   IconPlus,
+  IconSettings,
   IconTrash,
 } from "@tabler/icons-react";
 import groupBy from "lodash.groupby";
@@ -20,6 +21,7 @@ import {
   GanttHeader,
   GanttMarker,
   GanttProvider,
+  type SchedulingRule as GanttSchedulingRule,
   GanttSidebar,
   GanttSidebarGroup,
   GanttSidebarItem,
@@ -40,11 +42,20 @@ import {
   deserializeFeature,
   deserializeMarker,
   type FeatureWithRelations,
+  type SchedulingRule,
   type SerializedFeatureWithRelations,
   type SerializedMarker,
 } from "@/lib/db/types";
-import { batchUpdateFeatureDates, deleteFeature } from "../roadmap/actions";
+import {
+  batchUpdateFeatureDates,
+  createSchedulingRule,
+  deleteFeature,
+  deleteSchedulingRule,
+  getSchedulingRules,
+  toggleSchedulingRule,
+} from "../roadmap/actions";
 import { SaveChangesDialog } from "./save-changes-dialog";
+import { SchedulingRulesDialog } from "./scheduling-rules-dialog";
 import type { PendingChange } from "./types";
 
 const RANGE_OPTIONS: { value: Range; label: string }[] = [
@@ -72,6 +83,17 @@ function toGanttDependency(dep: Dependency): GanttDependency {
   };
 }
 
+// Convert DB scheduling rule to Gantt scheduling rule type
+function toGanttSchedulingRule(rule: SchedulingRule): GanttSchedulingRule {
+  return {
+    id: rule.id,
+    type: rule.type as GanttSchedulingRule["type"],
+    name: rule.name,
+    config: rule.config as GanttSchedulingRule["config"],
+    enabled: rule.enabled,
+  };
+}
+
 export function GanttView({
   initialFeatures,
   dependencies,
@@ -85,6 +107,10 @@ export function GanttView({
   const [range, setRange] = useState<Range>("monthly");
   const [zoom, setZoom] = useState(100);
 
+  // Scheduling rules state
+  const [schedulingRules, setSchedulingRules] = useState<SchedulingRule[]>([]);
+  const [isRulesDialogOpen, setIsRulesDialogOpen] = useState(false);
+
   // Pending changes state
   const [pendingChanges, setPendingChanges] = useState<
     Map<string, PendingChange>
@@ -96,6 +122,17 @@ export function GanttView({
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(
     new Set()
   );
+
+  // Fetch scheduling rules on mount
+  useEffect(() => {
+    const fetchRules = async () => {
+      const result = await getSchedulingRules();
+      if (result.success) {
+        setSchedulingRules(result.data);
+      }
+    };
+    fetchRules();
+  }, []);
 
   // Initialize original features on mount only
   useEffect(() => {
@@ -122,6 +159,9 @@ export function GanttView({
 
   // Flatten sorted features for index lookup
   const allSortedFeatures = Object.values(sortedGroupedFeatures).flat();
+
+  // Get enabled rules count for display
+  const enabledRulesCount = schedulingRules.filter((r) => r.enabled).length;
 
   const handleViewFeature = (id: string) =>
     console.log(`Feature selected: ${id}`);
@@ -193,7 +233,16 @@ export function GanttView({
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 25));
 
   const handleRecalculateSchedule = () => {
-    const updates = recalculateSchedule(features, ganttDependencies);
+    // Convert DB rules to Gantt rules format
+    const ganttRules = schedulingRules
+      .filter((r) => r.enabled)
+      .map(toGanttSchedulingRule);
+
+    const updates = recalculateSchedule(
+      features,
+      ganttDependencies,
+      ganttRules
+    );
 
     if (updates.length === 0) {
       console.log("Schedule is already up to date");
@@ -320,6 +369,47 @@ export function GanttView({
     setSelectedChanges(new Set(pendingChanges.keys()));
   const handleDeselectAll = () => setSelectedChanges(new Set());
 
+  // Scheduling rules handlers
+  const handleToggleRule = async (id: string, enabled: boolean) => {
+    // Optimistic update
+    const previousRules = schedulingRules;
+    setSchedulingRules((prev) =>
+      prev.map((rule) => (rule.id === id ? { ...rule, enabled } : rule))
+    );
+    const result = await toggleSchedulingRule(id, enabled);
+    if (!result.success) {
+      // Revert on failure
+      setSchedulingRules(previousRules);
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    // Optimistic update
+    const previousRules = schedulingRules;
+    setSchedulingRules((prev) => prev.filter((rule) => rule.id !== id));
+    const result = await deleteSchedulingRule(id);
+    if (!result.success) {
+      // Revert on failure
+      setSchedulingRules(previousRules);
+    }
+  };
+
+  const handleCreateRule = async (data: {
+    type: string;
+    name: string;
+    config: unknown;
+  }) => {
+    const result = await createSchedulingRule({
+      type: data.type,
+      name: data.name,
+      config: data.config,
+      enabled: false,
+    });
+    if (result.success) {
+      setSchedulingRules((prev) => [...prev, result.data]);
+    }
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <div className="flex items-center gap-4 border-b p-2">
@@ -355,6 +445,19 @@ export function GanttView({
             <IconPlus size={16} />
           </button>
         </div>
+        <button
+          className="flex items-center gap-1.5 rounded border px-2 py-1 text-sm hover:bg-secondary"
+          onClick={() => setIsRulesDialogOpen(true)}
+          type="button"
+        >
+          <IconSettings size={16} />
+          Rules
+          {enabledRulesCount > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-primary-foreground text-xs">
+              {enabledRulesCount}
+            </span>
+          )}
+        </button>
         <button
           className="flex items-center gap-1.5 rounded border px-2 py-1 text-sm hover:bg-secondary"
           onClick={handleRecalculateSchedule}
@@ -506,6 +609,14 @@ export function GanttView({
         open={isVerificationOpen}
         pendingChanges={pendingChanges}
         selectedChanges={selectedChanges}
+      />
+      <SchedulingRulesDialog
+        onClose={() => setIsRulesDialogOpen(false)}
+        onCreateRule={handleCreateRule}
+        onDeleteRule={handleDeleteRule}
+        onToggleRule={handleToggleRule}
+        open={isRulesDialogOpen}
+        rules={schedulingRules}
       />
     </div>
   );

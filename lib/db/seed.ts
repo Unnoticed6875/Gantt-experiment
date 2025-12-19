@@ -8,6 +8,7 @@ import {
   markers,
   products,
   releases,
+  schedulingRules,
   statuses,
   users,
 } from "./schema";
@@ -103,6 +104,109 @@ const featureNames = [
   "Build webhook integrations",
 ];
 
+// Default scheduling rules (all disabled by default)
+const seedSchedulingRules = [
+  // Holiday rules
+  {
+    type: "holiday",
+    name: "Skip Weekends",
+    config: { weekdays: [0, 6] }, // Sunday=0, Saturday=6
+    enabled: false,
+  },
+  {
+    type: "holiday",
+    name: "US Federal Holidays 2025",
+    config: {
+      dates: [
+        "2025-01-01", // New Year's Day
+        "2025-01-20", // MLK Day
+        "2025-02-17", // Presidents' Day
+        "2025-05-26", // Memorial Day
+        "2025-06-19", // Juneteenth
+        "2025-07-04", // Independence Day
+        "2025-09-01", // Labor Day
+        "2025-10-13", // Columbus Day
+        "2025-11-11", // Veterans Day
+        "2025-11-27", // Thanksgiving
+        "2025-12-25", // Christmas
+      ],
+    },
+    enabled: false,
+  },
+  {
+    type: "holiday",
+    name: "Christmas (Recurring)",
+    config: { month: 12, day: 25, recurring: true },
+    enabled: false,
+  },
+  {
+    type: "holiday",
+    name: "New Year's Day (Recurring)",
+    config: { month: 1, day: 1, recurring: true },
+    enabled: false,
+  },
+  // Slack rules
+  {
+    type: "slack",
+    name: "1-Day Buffer",
+    config: { days: 1 },
+    enabled: false,
+  },
+  {
+    type: "slack",
+    name: "2-Day Buffer",
+    config: { days: 2 },
+    enabled: false,
+  },
+  {
+    type: "slack",
+    name: "1-Week Buffer",
+    config: { days: 5 },
+    enabled: false,
+  },
+  // Constraint rules (examples)
+  {
+    type: "constraint",
+    name: "Fixed Deadlines",
+    config: { constraintType: "fixed_end", featureIds: [] },
+    enabled: false,
+  },
+  // Blackout rules
+  {
+    type: "blackout",
+    name: "Year-End Freeze",
+    config: { startDate: "2025-12-20", endDate: "2026-01-05" },
+    enabled: false,
+  },
+  // Duration rules
+  {
+    type: "duration",
+    name: "Minimum 1 Day",
+    config: { minDays: 1 },
+    enabled: false,
+  },
+  {
+    type: "duration",
+    name: "Maximum 30 Days",
+    config: { maxDays: 30 },
+    enabled: false,
+  },
+  // Alignment rules
+  {
+    type: "alignment",
+    name: "Start on Mondays",
+    config: { startDay: 1 }, // 1 = Monday
+    enabled: false,
+  },
+  // Capacity rules
+  {
+    type: "capacity",
+    name: "Max 3 per Owner",
+    config: { maxConcurrent: 3, groupBy: "owner" },
+    enabled: false,
+  },
+];
+
 // Date helpers
 function randomDateInRange(startOffset: number, endOffset: number): Date {
   const now = new Date();
@@ -125,6 +229,7 @@ async function seed() {
   await db.delete(dependencies);
   await db.delete(features);
   await db.delete(markers);
+  await db.delete(schedulingRules);
   await db.delete(statuses);
   await db.delete(users);
   await db.delete(groups);
@@ -305,6 +410,13 @@ async function seed() {
     .values(dependencyValues)
     .returning();
   console.log(`Inserted ${insertedDependencies.length} dependencies`);
+
+  // Insert scheduling rules
+  const insertedSchedulingRules = await db
+    .insert(schedulingRules)
+    .values(seedSchedulingRules)
+    .returning();
+  console.log(`Inserted ${insertedSchedulingRules.length} scheduling rules`);
 
   console.log("Seeding complete!");
 }

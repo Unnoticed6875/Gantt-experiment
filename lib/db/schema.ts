@@ -1,5 +1,7 @@
 import {
+  boolean,
   index,
+  jsonb,
   pgEnum,
   pgTable,
   timestamp,
@@ -139,3 +141,14 @@ export const dependencies = pgTable(
     index("dependencies_target_id_idx").on(table.targetId),
   ]
 );
+
+// Scheduling Rules table
+export const schedulingRules = pgTable("scheduling_rules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  type: varchar("type", { length: 50 }).notNull(), // "holiday" | "slack" | future types
+  name: varchar("name", { length: 255 }).notNull(),
+  config: jsonb("config").notNull(), // Flexible JSON for rule-specific config
+  enabled: boolean("enabled").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

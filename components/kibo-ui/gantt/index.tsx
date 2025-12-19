@@ -70,6 +70,11 @@ export {
 } from "./store";
 // Re-export types
 export type {
+  AlignmentConfig,
+  BlackoutConfig,
+  CapacityConfig,
+  ConstraintConfig,
+  DurationConfig,
   FeaturePosition,
   GanttContextProps,
   GanttDependency,
@@ -77,11 +82,40 @@ export type {
   GanttFeature,
   GanttMarkerProps,
   GanttStatus,
+  HolidayConfig,
+  LagConfig,
   Range,
+  SchedulingRule,
+  SchedulingRuleCategory,
+  SchedulingRuleConfig,
+  SchedulingRuleType,
+  SlackConfig,
   TimelineData,
 } from "./types";
+// Re-export constants
+export { RULE_CATEGORIES } from "./types";
+// Re-export utility types
+export type {
+  CapacityWarning,
+  DurationValidation,
+} from "./utils/auto-schedule";
 // Re-export utilities
-export { autoSchedule, recalculateSchedule } from "./utils/auto-schedule";
+export {
+  addWorkingDays,
+  alignToWeekday,
+  autoSchedule,
+  checkCapacity,
+  getAlignmentDay,
+  getFeatureConstraint,
+  getLagDays,
+  getTotalSlackDays,
+  getWorkingDaysBetween,
+  isBlackoutPeriod,
+  isHoliday,
+  isNonWorkingDay,
+  recalculateSchedule,
+  validateDuration,
+} from "./utils/auto-schedule";
 
 const createInitialTimelineData = (today: Date) => {
   const data: TimelineData = [];

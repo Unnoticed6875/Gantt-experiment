@@ -7,6 +7,7 @@ import type {
   markers,
   products,
   releases,
+  schedulingRules,
   statuses,
   users,
 } from "./schema";
@@ -21,6 +22,7 @@ export type Release = InferSelectModel<typeof releases>;
 export type Feature = InferSelectModel<typeof features>;
 export type Marker = InferSelectModel<typeof markers>;
 export type Dependency = InferSelectModel<typeof dependencies>;
+export type SchedulingRule = InferSelectModel<typeof schedulingRules>;
 
 // Insert types (for inserting into DB)
 export type NewStatus = InferInsertModel<typeof statuses>;
@@ -32,6 +34,7 @@ export type NewRelease = InferInsertModel<typeof releases>;
 export type NewFeature = InferInsertModel<typeof features>;
 export type NewMarker = InferInsertModel<typeof markers>;
 export type NewDependency = InferInsertModel<typeof dependencies>;
+export type NewSchedulingRule = InferInsertModel<typeof schedulingRules>;
 
 // Feature with all relations (for roadmap page)
 export type FeatureWithRelations = Feature & {

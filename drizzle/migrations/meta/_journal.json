@@ -8,6 +8,13 @@
       "when": 1766064085462,
       "tag": "0000_typical_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766144268652,
+      "tag": "0001_nostalgic_giant_girl",
+      "breakpoints": true
     }
   ]
 }
