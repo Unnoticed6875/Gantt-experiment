@@ -11,7 +11,6 @@ import groupBy from "lodash.groupby";
 import { EyeIcon, LinkIcon, TrashIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
-  autoSchedule,
   GanttCreateMarkerTrigger,
   type GanttDependency,
   GanttDependencyLayer,
@@ -176,30 +175,15 @@ export function GanttView({
       return;
     }
 
-    // Calculate all features that need to be rescheduled
-    const updates = autoSchedule(
-      id,
-      { startAt, endAt },
-      features,
-      ganttDependencies
-    );
-
-    // Apply all updates locally for immediate visual feedback
+    // Only update the dragged feature (no auto-scheduling)
     setFeatures((prev) =>
-      prev.map((feature) => {
-        const update = updates.find((u) => u.id === feature.id);
-        return update
-          ? { ...feature, startAt: update.startAt, endAt: update.endAt }
-          : feature;
-      })
+      prev.map((feature) =>
+        feature.id === id ? { ...feature, startAt, endAt } : feature
+      )
     );
 
-    // Track pending changes (don't save to DB yet)
-    for (const update of updates) {
-      trackPendingChange(update.id, update.startAt, update.endAt, "drag");
-    }
-
-    console.log(`Tracked ${updates.length} pending change(s)`);
+    // Track the single pending change
+    trackPendingChange(id, startAt, endAt, "drag");
   };
 
   const handleAddFeature = (date: Date) =>
